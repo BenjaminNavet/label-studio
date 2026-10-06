@@ -38,7 +38,7 @@ ROLE_MATRIX = {
 ORG_ADMIN_ONLY = frozenset({'projects.create', 'projects.delete'})
 
 # Organization-level permissions, outside the project role model: upstream behaviour is kept.
-NON_PROJECT_PERMISSION_PREFIXES = ('organizations.', 'users.')
+NON_PROJECT_PERMISSION_PREFIXES = ('organizations.', 'users.', 'avatar.')
 
 # Permissions an annotator holds only on objects they authored.
 OWN_OBJECT_PERMISSIONS = frozenset({'annotations.change', 'annotations.delete'})

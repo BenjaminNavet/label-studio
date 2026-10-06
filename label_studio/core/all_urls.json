@@ -1044,6 +1044,12 @@
         "decorators": ""
     },
     {
+        "url": "/data/local-files/",
+        "module": "io_storages.localfiles.views.localfiles_data",
+        "name": "storages:localfiles_data",
+        "decorators": ""
+    },
+    {
         "url": "/api/ml/",
         "module": "ml.api.MLBackendListAPI",
         "name": "ml:api:ml-list",
@@ -1095,6 +1101,18 @@
         "url": "/api/webhooks/info/",
         "module": "webhooks.api.WebhookInfoAPI",
         "name": "webhooks:api:webhook-info",
+        "decorators": ""
+    },
+    {
+        "url": "/api/projects/<int:pk>/roles/",
+        "module": "project_rbac.api.ProjectRoleListAPI",
+        "name": "project_rbac:project-role-list",
+        "decorators": ""
+    },
+    {
+        "url": "/api/projects/<int:pk>/roles/<int:user_pk>/",
+        "module": "project_rbac.api.ProjectRoleDetailAPI",
+        "name": "project_rbac:project-role-detail",
         "decorators": ""
     },
     {
@@ -1173,12 +1191,6 @@
         "url": "/api/fsm/entities/<str:entity_name>/<int:entity_id>/transition/",
         "module": "fsm.api.FSMEntityTransitionAPI",
         "name": "fsm:fsm-entity-transition",
-        "decorators": ""
-    },
-    {
-        "url": "/data/local-files/",
-        "module": "io_storages.localfiles.views.localfiles_data",
-        "name": "storages:localfiles_data",
         "decorators": ""
     },
     {
@@ -1879,6 +1891,42 @@
     },
     {
         "url": "/admin/session_policy/sessiontimeoutpolicy/<path:object_id>/",
+        "module": "django.views.generic.base.RedirectView",
+        "name": "",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/",
+        "module": "django.contrib.admin.options.changelist_view",
+        "name": "admin:project_rbac_projectrole_changelist",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/add/",
+        "module": "django.contrib.admin.options.add_view",
+        "name": "admin:project_rbac_projectrole_add",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/<path:object_id>/history/",
+        "module": "django.contrib.admin.options.history_view",
+        "name": "admin:project_rbac_projectrole_history",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/<path:object_id>/delete/",
+        "module": "django.contrib.admin.options.delete_view",
+        "name": "admin:project_rbac_projectrole_delete",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/<path:object_id>/change/",
+        "module": "django.contrib.admin.options.change_view",
+        "name": "admin:project_rbac_projectrole_change",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/projectrole/<path:object_id>/",
         "module": "django.views.generic.base.RedirectView",
         "name": "",
         "decorators": ""

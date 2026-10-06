@@ -1,0 +1,47 @@
+# Local check of the per-project roles fork: fork image + Postgres, bound to 127.0.0.1 only.
+# Build the image first, from the repository root: docker build -t label-studio-rbac:local .
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: labelstudio
+      POSTGRES_USER: labelstudio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - rbac_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labelstudio -d labelstudio"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  label-studio:
+    image: label-studio-rbac:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DJANGO_DB: default
+      POSTGRE_NAME: labelstudio
+      POSTGRE_USER: labelstudio
+      POSTGRE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRE_HOST: postgres
+      POSTGRE_PORT: "5432"
+      LABEL_STUDIO_HOST: http://localhost:${LABEL_STUDIO_PORT:-8080}
+      # Organization owner, hence administrator of every project.
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:?set LABEL_STUDIO_USERNAME in .env}
+      LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?set LABEL_STUDIO_PASSWORD in .env}
+      LABEL_STUDIO_USER_TOKEN: ${LABEL_STUDIO_USER_TOKEN:?set LABEL_STUDIO_USER_TOKEN in .env}
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      # Upstream reports errors to HumanSignal's Sentry by default.
+      SENTRY_DSN: ""
+      FRONTEND_SENTRY_DSN: ""
+    ports:
+      - "127.0.0.1:${LABEL_STUDIO_PORT:-8080}:8080"
+    volumes:
+      - rbac_lsdata:/label-studio/data
+
+volumes:
+  rbac_pgdata:
+  rbac_lsdata:

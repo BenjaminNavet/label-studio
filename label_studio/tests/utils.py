@@ -424,8 +424,12 @@ def make_annotator(config, project, login=False, client=None):
 def invite_client_to_project(client, project):
     if apps.is_installed('annotators'):
         return client.get(f'/annotator/invites/{project.token}/')
-    else:
-        return SimpleNamespace(status_code=200)
+    if apps.is_installed('project_rbac'):
+        # Fork with per-project roles: an invitation makes the client an annotator of the project.
+        from project_rbac.models import ProjectRole, Role
+
+        ProjectRole.objects.update_or_create(project=project, user=client.user, defaults={'role': Role.ANNOTATOR})
+    return SimpleNamespace(status_code=200)
 
 
 def login(client, email, password):

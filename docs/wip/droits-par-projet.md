@@ -13,7 +13,8 @@ Décision : `docs/decisions/0001-droits-par-projet.md`.
 - [x] Webhooks (filtrés sur les projets gérés)
 - [ ] Vues hors matrice restantes : data_import (FileUploadAPI, UploadedFileResponse, DownloadStorageData), io_storages proxy, react_code_proxy, FSM
 - [x] Tests de sécurité (33, contrôle négatif : 13 échecs sans RBAC)
-- [ ] Suite amont : comparer à la base `79c00e68` (worktree `../label-studio-baseline`)
+- [x] Suite amont : base `79c00e68` 0 échec ; branche 26 échecs, tous attendus (membre sans rôle, `ProjectMember` sans rôle, webhook sans projet), liste dans `echecs-attendus-suite-amont.txt`. `invite_client_to_project` donne le rôle annotator.
+- [x] Déploiement local : `deploy/rbac-localhost/` (image du fork + Postgres, 127.0.0.1)
 - [ ] Interface (lot suivant)
 
 ## Lancer les tests
