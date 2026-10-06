@@ -1,7 +1,7 @@
 """DRF permission applying the role matrix to every view that declares ``permission_required``."""
 
 from django.apps import apps
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 # DRF imports DEFAULT_PERMISSION_CLASSES while settings load, before the app registry is ready:
 # every import that touches models stays inside the methods.
@@ -30,6 +30,9 @@ class ProjectRolePermission(BasePermission):
             return False
 
         project_ids = resolve_project_ids(request, view)
+        if not project_ids and request.method not in SAFE_METHODS:
+            # A write that names no project would create or change an organization-wide object.
+            return False
         if not project_ids:
             # No project named: object-level checks and filtered querysets take over. A permission
             # limited to some roles still requires holding one of those roles somewhere.

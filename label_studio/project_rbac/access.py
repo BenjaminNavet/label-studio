@@ -120,7 +120,8 @@ def resolve_project_ids(request, view):
     if 'project' in request.query_params:
         project_ids.add(_as_int(request.query_params.get('project')) or MISSING)
     if request.method not in ('GET', 'HEAD', 'OPTIONS') and isinstance(request.data, Mapping):
-        if request.data.get('project') is not None:
+        # An explicit null detaches the object from its project (an organization-wide webhook, for instance).
+        if 'project' in request.data:
             project_ids.add(_as_int(request.data.get('project')) or MISSING)
         if request.data.get('task') is not None:
             task_model = apps.get_model('tasks', 'Task')

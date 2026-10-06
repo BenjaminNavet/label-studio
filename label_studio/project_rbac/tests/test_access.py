@@ -251,6 +251,24 @@ class TestWebhooks:
         assert response.status_code == 403
 
 
+    def test_manager_cannot_create_organization_webhook(self, world):
+        response = client_for(world['people']['manager']).post(
+            '/api/webhooks/', {'url': 'https://example.org/org-wide'}, format='json'
+        )
+        assert response.status_code == 403
+
+    def test_manager_cannot_detach_webhook_from_project(self, world, webhooks):
+        response = client_for(world['people']['manager']).patch(
+            f'/api/webhooks/{webhooks["project_a"].id}/', {'project': None}, format='json'
+        )
+        assert response.status_code == 403
+        assert (
+            client_for(world['people']['manager'])
+            .patch(f'/api/webhooks/{webhooks["project_a"].id}/', {'url': 'https://example.org/a2'}, format='json')
+            .status_code
+            == 200
+        )
+
 class TestProjectResolution:
     """The view-level gate judges every project a request names, and refuses unknown references."""
 
