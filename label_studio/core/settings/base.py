@@ -263,6 +263,7 @@ INSTALLED_APPS = [
     'ml_model_providers',
     'jwt_auth',
     'session_policy',
+    'project_rbac',
 ]
 
 MIDDLEWARE = [
@@ -298,7 +299,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'core.api_permissions.HasObjectPermission',
+        'project_rbac.permissions.ProjectRolePermission',
         'rest_framework.permissions.IsAuthenticated',
     ],
     'EXCEPTION_HANDLER': 'core.utils.common.custom_exception_handler',
@@ -801,7 +802,7 @@ DATA_MANAGER_LIST_FILTER_MAX_VALUES = int(get_env('DATA_MANAGER_LIST_FILTER_MAX_
 BULK_UPDATE_IS_LABELED = 'tasks.functions.bulk_update_is_labeled_by_overlap'
 BULK_CREATE_ANNOTATIONS_FSM_INITIALIZER = None
 USER_LOGIN_FORM = 'users.forms.LoginForm'
-PROJECT_MIXIN = 'projects.mixins.ProjectMixin'
+PROJECT_MIXIN = 'project_rbac.mixins.RBACProjectMixin'
 TASK_MIXIN = 'tasks.mixins.TaskMixin'
 LSE_PROJECT = None
 GET_TASKS_AGREEMENT_QUERYSET = None

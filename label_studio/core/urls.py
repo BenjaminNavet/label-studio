@@ -66,6 +66,7 @@ urlpatterns = [
     re_path(r'^', include('io_storages.urls')),
     re_path(r'^', include('ml.urls')),
     re_path(r'^', include('webhooks.urls')),
+    re_path(r'^', include('project_rbac.urls')),
     re_path(r'^', include('labels_manager.urls')),
     re_path(r'^', include('fsm.urls')),
     re_path(r'version/', views.version_page, name='version'),  # html page

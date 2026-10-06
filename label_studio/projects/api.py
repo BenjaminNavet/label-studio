@@ -27,6 +27,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema
 from label_studio_sdk.label_interface.interface import LabelInterface
 from ml.serializers import MLBackendSerializer
+from project_rbac.access import visible_projects
 from projects.functions.next_task import get_next_task
 from projects.functions.search import search_projects
 from projects.functions.stream_history import get_label_stream_history
@@ -177,7 +178,7 @@ class ProjectListAPI(generics.ListCreateAPIView):
         fields = self.get_requested_fields(serializer)
         sparse_fields = self.get_sparse_fields()
         filter = serializer.validated_data.get('filter')
-        projects = Project.objects.filter(organization=self.request.user.active_organization).order_by(
+        projects = Project.objects.for_user(self.request.user).order_by(
             F('pinned_at').desc(nulls_last=True), '-created_at'
         )
         search = serializer.validated_data.get('search')
@@ -268,10 +269,10 @@ class ProjectCountsListAPI(generics.ListAPIView):
         serializer = GetFieldsSerializer(data=self.request.query_params)
         serializer.is_valid(raise_exception=True)
         fields = serializer.validated_data.get('include')
-        projects = Project.objects.with_counts(fields=fields).filter(
-            organization=self.request.user.active_organization
+        projects = visible_projects(
+            Project.objects.with_counts(fields=fields).filter(organization=self.request.user.active_organization),
+            self.request.user,
         )
-
         # Only annotate FSM state for UI/API consumption when both feature flags are enabled
         if flag_set('fflag_feat_fit_568_finite_state_management', user=self.request.user) and flag_set(
             'fflag_feat_fit_710_fsm_state_fields', user=self.request.user
@@ -405,7 +406,6 @@ class ProjectAPI(generics.RetrieveUpdateDestroyAPIView):
         projects = Project.objects.with_counts(fields=fields).filter(
             organization=self.request.user.active_organization
         )
-
         # Only annotate FSM state for UI/API consumption when both feature flags are enabled
         if flag_set('fflag_feat_fit_568_finite_state_management', user=self.request.user) and flag_set(
             'fflag_feat_fit_710_fsm_state_fields', user=self.request.user
