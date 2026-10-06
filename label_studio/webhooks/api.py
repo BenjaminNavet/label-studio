@@ -4,6 +4,8 @@ from django.utils.decorators import method_decorator
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from project_rbac.access import managed_by
+from project_rbac.permissions import ProjectRolePermission
 from projects import models as project_models
 from rest_framework import generics
 from rest_framework.exceptions import NotFound
@@ -58,7 +60,7 @@ class WebhookFilterSet(django_filters.FilterSet):
 class WebhookListAPI(generics.ListCreateAPIView):
     queryset = Webhook.objects.all()
     serializer_class = WebhookSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectRolePermission]
     filter_backends = [DjangoFilterBackend]
     filterset_class = WebhookFilterSet
     permission_required = ViewClassPermission(
@@ -67,7 +69,10 @@ class WebhookListAPI(generics.ListCreateAPIView):
     )
 
     def get_queryset(self):
-        return Webhook.objects.filter(organization=self.request.user.active_organization)
+        # Webhooks carry target URLs and headers: only managers of their project, or org admins, see them.
+        return managed_by(
+            Webhook.objects.filter(organization=self.request.user.active_organization), self.request.user
+        )
 
     def perform_create(self, serializer):
         from rest_framework.exceptions import PermissionDenied
@@ -131,7 +136,7 @@ class WebhookListAPI(generics.ListCreateAPIView):
 class WebhookAPI(generics.RetrieveUpdateDestroyAPIView):
     queryset = Webhook.objects.all()
     serializer_class = WebhookSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectRolePermission]
     permission_required = ViewClassPermission(
         GET=all_permissions.webhooks_view,
         PATCH=all_permissions.webhooks_change,
@@ -145,7 +150,10 @@ class WebhookAPI(generics.RetrieveUpdateDestroyAPIView):
         return super().get_serializer_class()
 
     def get_queryset(self):
-        return Webhook.objects.filter(organization=self.request.user.active_organization)
+        # Webhooks carry target URLs and headers: only managers of their project, or org admins, see them.
+        return managed_by(
+            Webhook.objects.filter(organization=self.request.user.active_organization), self.request.user
+        )
 
 
 @method_decorator(

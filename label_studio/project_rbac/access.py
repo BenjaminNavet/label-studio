@@ -7,6 +7,8 @@ from django.apps import apps
 from .models import ProjectRole, Role
 from .roles import ORG_ADMIN_ONLY, OWN_OBJECT_PERMISSIONS, roles_allowed
 
+# Placeholder id for a referenced project or object that does not exist.
+MISSING = -1
 # Route prefixes whose ``pk`` is a project id.
 PROJECT_PK_ROUTES = ('api/projects/<int:pk>', 'api/dm/projects/<int:pk>')
 # Route prefixes whose ``pk`` is the id of a project-scoped object.
@@ -91,8 +93,14 @@ def _as_int(value):
         return None
 
 
-def resolve_project_id(request, view):
-    """Infer the project a request targets from its route, query string or body; None when unknown."""
+def resolve_project_ids(request, view):
+    """Collect every project a request may target, from its route, query string and body.
+
+    A view may read its project from any of these places, so all of them are checked: a request naming
+    project A in the query string and project B in the body is judged on both. ``MISSING`` stands for a
+    referenced object or project that does not exist.
+    """
+    project_ids = set()
     kwargs = getattr(view, 'kwargs', {}) or {}
     # Apps are included under re_path(r'^', ...), so routes start with a regex anchor.
     route = (getattr(request.resolver_match, 'route', '') or '').lstrip('^')
@@ -100,17 +108,34 @@ def resolve_project_id(request, view):
 
     if pk is not None:
         if route.startswith(PROJECT_PK_ROUTES):
-            return pk
-        for prefix, model_label in OBJECT_PK_ROUTES.items():
-            if route.startswith(prefix):
-                return _project_id_for_object(apps.get_model(model_label), pk)
-        queryset = getattr(view, 'queryset', None)
-        if queryset is not None:
-            return _project_id_for_object(queryset.model, pk)
+            project_ids.add(pk)
+        else:
+            model = next(
+                (apps.get_model(label) for prefix, label in OBJECT_PK_ROUTES.items() if route.startswith(prefix)),
+                getattr(getattr(view, 'queryset', None), 'model', None),
+            )
+            if model is not None:
+                project_ids.add(_project_id_for_object(model, pk))
 
-    project_id = _as_int(request.query_params.get('project'))
-    if project_id is not None:
-        return project_id
+    if 'project' in request.query_params:
+        project_ids.add(_as_int(request.query_params.get('project')) or MISSING)
     if request.method not in ('GET', 'HEAD', 'OPTIONS') and isinstance(request.data, Mapping):
-        return _as_int(request.data.get('project'))
-    return None
+        if request.data.get('project') is not None:
+            project_ids.add(_as_int(request.data.get('project')) or MISSING)
+        if request.data.get('task') is not None:
+            task_model = apps.get_model('tasks', 'Task')
+            project_ids.add(_project_id_for_object(task_model, _as_int(request.data.get('task'))) or MISSING)
+
+    project_ids.discard(None)
+    return project_ids
+
+
+def managed_by(queryset, user, project_field='project'):
+    """Restrict a queryset of project-scoped objects to the projects ``user`` manages.
+
+    Organization admins keep everything, including objects attached to no project.
+    """
+    if is_org_admin(user, user.active_organization):
+        return queryset
+    managed_project_ids = ProjectRole.objects.filter(user=user, role=Role.MANAGER).values('project_id')
+    return queryset.filter(**{f'{project_field}__in': managed_project_ids})

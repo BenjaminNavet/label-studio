@@ -211,3 +211,68 @@ class TestRoleAssignmentAPI:
             self.roles_url(world), {'user': outsider.id, 'role': Role.ANNOTATOR}, format='json'
         )
         assert response.status_code == 400
+
+
+class TestWebhooks:
+    @pytest.fixture
+    def webhooks(self, world):
+        from webhooks.models import Webhook
+
+        organization = world['organization']
+        return {
+            'project_a': Webhook.objects.create(
+                organization=organization, project=world['project_a'], url='https://example.org/a'
+            ),
+            'organization': Webhook.objects.create(organization=organization, url='https://example.org/org'),
+        }
+
+    def listed_webhook_ids(self, user):
+        response = client_for(user).get('/api/webhooks/')
+        assert response.status_code == 200
+        return {webhook['id'] for webhook in response.json()}
+
+    def test_manager_sees_only_project_webhooks(self, world, webhooks):
+        assert self.listed_webhook_ids(world['people']['manager']) == {webhooks['project_a'].id}
+
+    def test_reviewer_sees_no_webhook(self, world, webhooks):
+        assert client_for(world['people']['reviewer']).get('/api/webhooks/').status_code == 403
+        response = client_for(world['people']['reviewer']).get(f'/api/webhooks/{webhooks["project_a"].id}/')
+        assert response.status_code in HIDDEN
+
+    def test_organization_webhook_reserved_to_admin(self, world, webhooks):
+        url = f'/api/webhooks/{webhooks["organization"].id}/'
+        assert client_for(world['people']['manager']).get(url).status_code in HIDDEN
+        assert client_for(world['people']['admin']).get(url).status_code == 200
+
+    def test_reviewer_cannot_create_webhook(self, world):
+        response = client_for(world['people']['reviewer']).post(
+            '/api/webhooks/', {'project': world['project_a'].id, 'url': 'https://example.org/x'}, format='json'
+        )
+        assert response.status_code == 403
+
+
+class TestProjectResolution:
+    """The view-level gate judges every project a request names, and refuses unknown references."""
+
+    def test_query_and_body_naming_different_projects_refused(self, world):
+        response = client_for(world['people']['manager']).post(
+            f'/api/storages/s3/?project={world["project_a"].id}',
+            {'project': world['project_b'].id, 'bucket': 'x'},
+            format='json',
+        )
+        assert response.status_code == 403
+
+    def test_annotator_cannot_create_prediction_through_task(self, world):
+        response = client_for(world['people']['annotator']).post(
+            '/api/predictions/', {'task': world['task_a'].id, 'result': [], 'score': 0.5}, format='json'
+        )
+        assert response.status_code == 403
+
+    def test_unknown_project_refused(self, world):
+        response = client_for(world['people']['manager']).post(
+            '/api/storages/s3/', {'project': 999999, 'bucket': 'x'}, format='json'
+        )
+        assert response.status_code == 403
+
+    def test_outsider_without_role_cannot_reach_manager_endpoint_without_project(self, world):
+        assert client_for(world['people']['outsider']).get('/api/storages/s3/').status_code == 403

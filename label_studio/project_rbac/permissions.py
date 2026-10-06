@@ -13,29 +13,39 @@ class ProjectRolePermission(BasePermission):
     message = 'Your role on this project does not allow this action.'
 
     def has_permission(self, request, view):
-        from .access import is_org_admin, resolve_project_id, role_allows
-        from .roles import ORG_ADMIN_ONLY, required_permission
+        from .access import MISSING, is_org_admin, resolve_project_ids, role_allows
+        from .models import ProjectRole, Role
+        from .roles import NON_PROJECT_PERMISSION_PREFIXES, ORG_ADMIN_ONLY, required_permission, roles_allowed
 
         user = request.user
         if not user or not user.is_authenticated:
             # Authentication is IsAuthenticated's job; let it produce the 401.
             return True
         permission = required_permission(view, request.method)
-        if permission is None:
+        if permission is None or permission.startswith(NON_PROJECT_PERMISSION_PREFIXES):
             return True
+        if is_org_admin(user, user.active_organization):
+            return True
+        if permission in ORG_ADMIN_ONLY:
+            return False
 
-        project_id = resolve_project_id(request, view)
-        if project_id is None:
-            if permission in ORG_ADMIN_ONLY:
-                return is_org_admin(user, user.active_organization)
-            return True
-        project = (
-            apps.get_model('projects', 'Project').objects.filter(pk=project_id).select_related('organization').first()
+        project_ids = resolve_project_ids(request, view)
+        if not project_ids:
+            # No project named: object-level checks and filtered querysets take over. A permission
+            # limited to some roles still requires holding one of those roles somewhere.
+            allowed_roles = roles_allowed(permission)
+            if Role.ANNOTATOR in allowed_roles:
+                # Every role holds it: listings are filtered by project visibility, not refused.
+                return True
+            return ProjectRole.objects.filter(user=user, role__in=allowed_roles).exists()
+        if MISSING in project_ids:
+            return False
+        projects = list(
+            apps.get_model('projects', 'Project').objects.filter(pk__in=project_ids).select_related('organization')
         )
-        if project is None:
-            # Unknown project: let the view answer 404.
-            return True
-        return role_allows(user, project, permission)
+        if len(projects) != len(project_ids):
+            return False
+        return all(role_allows(user, project, permission) for project in projects)
 
     def has_object_permission(self, request, view, obj):
         from .access import project_of, role_allows
