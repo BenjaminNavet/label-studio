@@ -250,7 +250,6 @@ class TestWebhooks:
         )
         assert response.status_code == 403
 
-
     def test_manager_cannot_create_organization_webhook(self, world):
         response = client_for(world['people']['manager']).post(
             '/api/webhooks/', {'url': 'https://example.org/org-wide'}, format='json'
@@ -268,6 +267,16 @@ class TestWebhooks:
             .status_code
             == 200
         )
+
+    def test_query_project_does_not_stand_in_for_body_project(self, world):
+        from webhooks.models import Webhook
+
+        response = client_for(world['people']['manager']).post(
+            f'/api/webhooks/?project={world["project_a"].id}', {'url': 'https://example.org/q'}, format='json'
+        )
+        assert response.status_code in HIDDEN
+        assert not Webhook.objects.filter(url='https://example.org/q').exists()
+
 
 class TestProjectResolution:
     """The view-level gate judges every project a request names, and refuses unknown references."""
