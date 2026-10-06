@@ -44,6 +44,14 @@ Le code communautaire expose déjà les points d'accroche nécessaires :
      paramètre `project` ou du corps) et au niveau de l'objet.
    - Une permission absente de la matrice est réservée au `manager` (refus par
      défaut plutôt qu'ouverture par défaut).
+   - Au niveau de la vue, la requête est jugée sur **chaque** projet qu'elle
+     cite (route, paramètre `project`, champs `project` et `task` du corps) :
+     une vue peut lire son projet à n'importe lequel de ces endroits. Une
+     référence inexistante est refusée. Sans projet cité, une permission
+     détenue par tous les rôles passe (les listes sont filtrées) ; sinon il
+     faut détenir un rôle éligible sur au moins un projet.
+   - Les permissions d'organisation (`organizations.*`, `users.*`) gardent le
+     comportement amont.
 
 ## Conséquences
 
