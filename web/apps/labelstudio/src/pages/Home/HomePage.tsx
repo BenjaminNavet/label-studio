@@ -15,6 +15,7 @@ import { HeidiTips } from "../../components/HeidiTips/HeidiTips";
 import { useAPI } from "../../providers/ApiProvider";
 import { CreateProject } from "../CreateProject/CreateProject";
 import { InviteLink } from "../Organization/PeoplePage/InviteLink";
+import { useRbacMe } from "../../hooks/useRbacMe";
 import type { Page } from "../types/Page";
 import {
   creationDialogOpen,
@@ -65,6 +66,9 @@ const actions = [
 type Action = (typeof actions)[number]["type"];
 
 export const HomePage: Page = () => {
+  // project_rbac: the invite link is reserved to administrators.
+  const isAdmin = useRbacMe()?.is_admin === true;
+  const visibleActions = actions.filter((action) => action.type !== "inviteMembers" || isAdmin);
   const api = useAPI();
   const location = useLocation();
   const [modalIsOpen, setModalIsOpen] = useAtom(creationDialogOpen);
@@ -149,7 +153,7 @@ export const HomePage: Page = () => {
             </Typography>
           </div>
           <div className="flex justify-start gap-4">
-            {actions.map((action) => {
+            {visibleActions.map((action) => {
               return (
                 <Button
                   key={action.title}

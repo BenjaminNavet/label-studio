@@ -161,6 +161,7 @@ export const MembersSettings = () => {
               onChange={(event) => setNewEmail(event.target.value)}
               data-testid="members-email-input"
               autoComplete="off"
+              className="w-full"
             />
           </div>
           <div style={{ width: 160 }}>
