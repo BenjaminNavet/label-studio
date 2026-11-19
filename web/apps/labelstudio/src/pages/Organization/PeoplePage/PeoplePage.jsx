@@ -12,12 +12,14 @@ import "./PeoplePage.prefix.css";
 import { TokenSettingsModal } from "@humansignal/app-common/blocks/TokenSettingsModal";
 import { IconPlus } from "@humansignal/icons";
 import { useToast } from "@humansignal/ui";
+import { useRbacMe } from "../../../hooks/useRbacMe";
 import { InviteLink } from "./InviteLink";
 import { SelectedUser } from "./SelectedUser";
 
 export const PeoplePage = () => {
   const apiSettingsModal = useRef();
   const toast = useToast();
+  const isAdmin = useRbacMe()?.is_admin === true;
   const [selectedUser, setSelectedUser] = useState(null);
   const [invitationOpen, setInvitationOpen] = useState(false);
 
@@ -69,13 +71,16 @@ export const PeoplePage = () => {
                 API Tokens Settings
               </Button>
             )}
-            <Button
-              leading={<IconPlus className="!h-4" />}
-              onClick={() => setInvitationOpen(true)}
-              aria-label="Invite new member"
-            >
-              Add Members
-            </Button>
+            {isAdmin && (
+              <Button
+                leading={<IconPlus className="!h-4" />}
+                onClick={() => setInvitationOpen(true)}
+                aria-label="Invite new member"
+                data-testid="people-add-members"
+              >
+                Add Members
+              </Button>
+            )}
           </Space>
         </Space>
       </div>
@@ -92,13 +97,15 @@ export const PeoplePage = () => {
           isFF(FF_LSDV_E_297) && <HeidiTips collection="organizationPage" />
         )}
       </div>
-      <InviteLink
-        opened={invitationOpen}
-        onClosed={() => {
-          console.log("hidden");
-          setInvitationOpen(false);
-        }}
-      />
+      {isAdmin && (
+        <InviteLink
+          opened={invitationOpen}
+          onClosed={() => {
+            console.log("hidden");
+            setInvitationOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };
