@@ -1116,6 +1116,12 @@
         "decorators": ""
     },
     {
+        "url": "/organization/accounts",
+        "module": "organizations.views.simple_view",
+        "name": "project_rbac:organization-accounts",
+        "decorators": ""
+    },
+    {
         "url": "/api/rbac/me/",
         "module": "project_rbac.accounts.RbacMeAPI",
         "name": "project_rbac:me",

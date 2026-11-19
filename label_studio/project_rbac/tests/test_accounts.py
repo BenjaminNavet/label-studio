@@ -51,6 +51,22 @@ class TestWhoAmI:
         assert APIClient().get('/api/rbac/me/').status_code == 401
 
 
+class TestAccountsPageRoute:
+    """The single-page application needs a server route for each page it can be opened on."""
+
+    def test_page_is_served_to_a_signed_in_user(self, lab):
+        password = create_account(lab).json()['password']
+        client = APIClient()
+        # Through the real login form: it sets the session keys the session-timeout middleware expects.
+        client.post('/user/login/', {'email': 'dave@lab.test', 'password': password})
+        assert client.get('/organization/accounts').status_code == 200
+
+    def test_anonymous_is_sent_to_the_login_page(self):
+        response = APIClient().get('/organization/accounts')
+        assert response.status_code == 302
+        assert '/user/login' in response['Location']
+
+
 class TestOnlyAdministratorsManageAccounts:
     def test_member_is_refused_everywhere(self, lab):
         alice = client_for(lab['people']['alice'])
