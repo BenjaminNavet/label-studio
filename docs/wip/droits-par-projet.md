@@ -17,19 +17,26 @@ Décisions : `docs/decisions/0001-droits-par-projet.md`, `0002-proprietaire-et-c
 
 ### Chantier du 2026-11-19 : propriétaire, comptes, interface, serveur
 
-Squelette commité (ADR 0002 et 0003, routes, tests désactivés, points d'API du frontend).
+- [x] Lot 1 — propriétaire (ADR 0002) : création par tout membre, rôle manager automatique (signal
+      `post_save`), suppression réservée au propriétaire, invitation par e-mail, migration de données 0002
+- [x] Lot 2 — vues hors matrice : `FileUploadAPI` (aucun contrôle d'objet en amont) passe par la matrice ;
+      FSM : `get_permission_required` pris en compte, projet déduit de `<entity_name>/<entity_id>`.
+      Vérifiées et déjà couvertes par `has_permission` : `UploadedFileResponse`, `DownloadStorageData`,
+      proxy `io_storages`, `react_code_proxy`, `localfiles_data`
+- [x] Lot 3 — comptes (ADR 0003) : API `/api/rbac/accounts/`, `/api/rbac/me/`, permissions d'organisation
+      fermées aux membres, listes d'utilisateurs filtrées (`visible_users`, `visible_members`)
+- [x] Lot 4 — interface : `pages/Settings/MembersSettings/` (réglages de projet > Members)
+- [x] Lot 5 — interface : `pages/Organization/AccountsPage/` (Organization > Accounts, administrateurs) ;
+      bouton « Add Members » masqué aux autres
+- [x] Lot 6 — déploiement serveur : `deploy/server/` (Caddy HTTPS, Postgres, `backup.sh`, README)
+- [ ] Intégration : image Docker, essai de bout en bout, suite amont (résultats ci-dessous)
 
-- [ ] Lot 1 — propriétaire (ADR 0002) : création par tout membre, rôle manager automatique, suppression
-      réservée au propriétaire, invitation par e-mail, migration de données
-- [ ] Lot 2 — vues hors matrice : `FileUploadAPI` (aucun contrôle d'objet en amont), FSM
-      (`get_permission_required` ignoré). Vérifiées et déjà couvertes par `has_permission` :
-      `UploadedFileResponse`, `DownloadStorageData`, proxy `io_storages`, `react_code_proxy`, `localfiles_data`
-- [ ] Lot 3 — comptes (ADR 0003) : API `/api/rbac/accounts/`, `/api/rbac/me/`, verrouillage des permissions
-      d'organisation, listes d'utilisateurs filtrées
-- [ ] Lot 4 — interface : page « Members » des réglages de projet
-- [ ] Lot 5 — interface : page « Accounts » de l'organisation (administrateurs)
-- [ ] Lot 6 — déploiement serveur : `deploy/server/` (proxy HTTPS, sauvegardes)
-- [ ] Intégration : image Docker, essai de bout en bout, suite amont
+Points d'accroche dans le code amont (à surveiller lors des fusions depuis `upstream/develop`) :
+`core/settings/base.py`, `core/urls.py`, `projects/models.py` (`for_user`), `projects/api.py`,
+`webhooks/api.py`, `data_import/api.py` (`FileUploadAPI.permission_required`), `users/api.py`
+(`UserAPI.get_queryset`), `organizations/api.py` (`OrganizationMemberListAPI.filter_queryset`),
+`web/apps/labelstudio/src/config/ApiConfig.js`, `pages/Settings/index.jsx`, `pages/Organization/index.jsx`,
+`pages/Organization/PeoplePage/PeoplePage.jsx`.
 
 ## Contrat d'API (lots 1 et 3)
 

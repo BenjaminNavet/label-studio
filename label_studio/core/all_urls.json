@@ -1116,6 +1116,30 @@
         "decorators": ""
     },
     {
+        "url": "/api/rbac/me/",
+        "module": "project_rbac.accounts.RbacMeAPI",
+        "name": "project_rbac:me",
+        "decorators": ""
+    },
+    {
+        "url": "/api/rbac/accounts/",
+        "module": "project_rbac.accounts.AccountListAPI",
+        "name": "project_rbac:account-list",
+        "decorators": ""
+    },
+    {
+        "url": "/api/rbac/accounts/<int:pk>/",
+        "module": "project_rbac.accounts.AccountDetailAPI",
+        "name": "project_rbac:account-detail",
+        "decorators": ""
+    },
+    {
+        "url": "/api/rbac/accounts/<int:pk>/reset-password/",
+        "module": "project_rbac.accounts.AccountResetPasswordAPI",
+        "name": "project_rbac:account-reset-password",
+        "decorators": ""
+    },
+    {
         "url": "/api/labels/",
         "module": "labels_manager.api.LabelAPI",
         "name": "labels_manager:api-labels:label-list",
