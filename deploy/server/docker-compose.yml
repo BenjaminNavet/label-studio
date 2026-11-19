@@ -1,0 +1,76 @@
+# Lab server: fork image behind a Caddy HTTPS reverse proxy, with Postgres.
+# Only Caddy publishes ports (80/443). Image: docker build -t label-studio-rbac:local . (repository root)
+# Usage: docker compose --env-file .env up -d   (see README.md)
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: labelstudio
+      POSTGRES_USER: labelstudio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labelstudio -d labelstudio"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  label-studio:
+    image: ${LABEL_STUDIO_IMAGE:-label-studio-rbac:local}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DJANGO_DB: default
+      POSTGRE_NAME: labelstudio
+      POSTGRE_USER: labelstudio
+      POSTGRE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRE_HOST: postgres
+      POSTGRE_PORT: "5432"
+      LABEL_STUDIO_HOST: https://${LABEL_STUDIO_DOMAIN:?set LABEL_STUDIO_DOMAIN in .env}
+      CSRF_TRUSTED_ORIGINS: https://${LABEL_STUDIO_DOMAIN}
+      # Parsed with bool(int(...)): needs 1, not true.
+      SESSION_COOKIE_SECURE: "1"
+      CSRF_COOKIE_SECURE: "1"
+      # "<header>,<value>" in Django META form: trust the proxy's X-Forwarded-Proto.
+      SECURE_PROXY_SSL_HEADER: HTTP_X_FORWARDED_PROTO,https
+      # Organization owner, hence administrator of every project.
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:?set LABEL_STUDIO_USERNAME in .env}
+      LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?set LABEL_STUDIO_PASSWORD in .env}
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      # Upstream reports errors to HumanSignal's Sentry by default.
+      SENTRY_DSN: ""
+      FRONTEND_SENTRY_DSN: ""
+      COLLECT_ANALYTICS: "false"
+    expose:
+      - "8080"
+    volumes:
+      - lsdata:/label-studio/data
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    depends_on:
+      - label-studio
+    environment:
+      LABEL_STUDIO_DOMAIN: ${LABEL_STUDIO_DOMAIN:?set LABEL_STUDIO_DOMAIN in .env}
+      CADDY_TLS: ${CADDY_TLS:-internal}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  lsdata:
+  caddy_data:
+  caddy_config:

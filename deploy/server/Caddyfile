@@ -1,0 +1,9 @@
+# Single site; TLS mode chosen by CADDY_TLS (internal | e-mail address | "/certs/fullchain.pem /certs/privkey.pem").
+{$LABEL_STUDIO_DOMAIN} {
+	tls {$CADDY_TLS:internal}
+	encode gzip zstd
+
+	header Strict-Transport-Security "max-age=31536000"
+
+	reverse_proxy label-studio:8080
+}
