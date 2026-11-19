@@ -34,11 +34,21 @@ ROLE_MATRIX = {
     'views.delete': ALL_ROLES,
 }
 
-# Permissions only an organization administrator holds, whatever the project role.
-ORG_ADMIN_ONLY = frozenset({'projects.create', 'projects.delete'})
+# Permissions every organization member holds, with no project involved (ADR 0002).
+MEMBER_PERMISSIONS = frozenset({'projects.create'})
 
-# Organization-level permissions, outside the project role model: upstream behaviour is kept.
+# Permissions held by the project owner (its creator) and by organization administrators only.
+OWNER_ONLY = frozenset({'projects.delete'})
+
+# Organization-level permissions, outside the project role model (ADR 0003).
 NON_PROJECT_PERMISSION_PREFIXES = ('organizations.', 'users.', 'avatar.')
+# Those a plain member holds; any other one is reserved to administrators.
+MEMBER_ORGANIZATION_PERMISSIONS = frozenset({'organizations.view', 'users.token.any', 'avatar.any'})
+# Upstream guards user listings with this one: a plain member may read (listings are filtered), never write.
+READ_ONLY_ORGANIZATION_PERMISSION = 'organizations.change'
+
+# Declared by a view whose own permission lookup failed: held by nobody but administrators and managers.
+UNKNOWN_PERMISSION = 'project_rbac.unknown'
 
 # Permissions an annotator holds only on objects they authored.
 OWN_OBJECT_PERMISSIONS = frozenset({'annotations.change', 'annotations.delete'})
@@ -63,6 +73,12 @@ def required_permission(view, method):
         return override
 
     declared = getattr(view, 'permission_required', None)
+    if declared is None and hasattr(view, 'get_permission_required'):
+        # Some views (FSM) compute their permission from the route instead of declaring it.
+        try:
+            declared = view.get_permission_required()
+        except (KeyError, ValueError):
+            return UNKNOWN_PERMISSION
     if declared is None:
         return None
     permission = declared if isinstance(declared, str) else getattr(declared, method, None)

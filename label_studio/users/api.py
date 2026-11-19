@@ -136,7 +136,11 @@ class UserAPI(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     def get_queryset(self):
-        return User.objects.filter(organizations=self.request.user.active_organization)
+        from project_rbac.access import visible_users
+
+        return visible_users(
+            User.objects.filter(organizations=self.request.user.active_organization), self.request.user
+        )
 
     @extend_schema(exclude=True)
     @action(detail=True, methods=['delete', 'post'], permission_required=all_permissions.avatar_any)

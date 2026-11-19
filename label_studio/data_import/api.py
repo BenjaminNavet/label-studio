@@ -954,7 +954,13 @@ class FileUploadListAPI(generics.mixins.ListModelMixin, generics.mixins.DestroyM
 )
 class FileUploadAPI(generics.RetrieveUpdateDestroyAPIView):
     parser_classes = (JSONParser, MultiPartParser, FormParser)
-    permission_classes = (IsAuthenticated,)
+    # project_rbac: upstream only required authentication here, with no check on the file's project
+    permission_required = ViewClassPermission(
+        GET=all_permissions.projects_view,
+        PATCH=all_permissions.projects_change,
+        PUT=all_permissions.projects_change,
+        DELETE=all_permissions.projects_change,
+    )
     serializer_class = FileUploadSerializer
     queryset = FileUpload.objects.all()
 

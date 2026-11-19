@@ -13,23 +13,31 @@ class ProjectRolePermission(BasePermission):
     message = 'Your role on this project does not allow this action.'
 
     def has_permission(self, request, view):
-        from .access import MISSING, is_org_admin, resolve_project_ids, role_allows
+        from .access import (
+            MISSING,
+            is_org_admin,
+            organization_permission_allows,
+            resolve_project_ids,
+            role_allows,
+        )
         from .models import ProjectRole, Role
-        from .roles import NON_PROJECT_PERMISSION_PREFIXES, ORG_ADMIN_ONLY, required_permission, roles_allowed
+        from .roles import MEMBER_PERMISSIONS, NON_PROJECT_PERMISSION_PREFIXES, required_permission, roles_allowed
 
         user = request.user
         if not user or not user.is_authenticated:
             # Authentication is IsAuthenticated's job; let it produce the 401.
             return True
         permission = required_permission(view, request.method)
-        if permission is None or permission.startswith(NON_PROJECT_PERMISSION_PREFIXES):
+        if permission is None:
             return True
+        if permission.startswith(NON_PROJECT_PERMISSION_PREFIXES):
+            return organization_permission_allows(user, permission, request.method)
         if is_org_admin(user, user.active_organization):
             return True
-        if permission in ORG_ADMIN_ONLY:
-            return False
 
         project_ids = resolve_project_ids(request, view)
+        if not project_ids and permission in MEMBER_PERMISSIONS:
+            return True
         if not project_ids and request.method not in SAFE_METHODS:
             # A write that names no project would create or change an organization-wide object.
             return False
@@ -51,11 +59,19 @@ class ProjectRolePermission(BasePermission):
         return all(role_allows(user, project, permission) for project in projects)
 
     def has_object_permission(self, request, view, obj):
-        from .access import project_of, role_allows
+        from django.contrib.auth import get_user_model
+
+        from .access import is_org_admin, project_of, role_allows
         from .roles import required_permission
 
-        if not obj.has_permission(request.user):
+        user = request.user
+        if not obj.has_permission(user):
             return False
+        if isinstance(obj, get_user_model()):
+            # Upstream lets any member edit any other member: an account is changed by its holder or an administrator.
+            if request.method in SAFE_METHODS or obj.pk == user.pk:
+                return True
+            return is_org_admin(user, user.active_organization)
         permission = required_permission(view, request.method)
         project = project_of(obj)
         if permission is None or project is None:

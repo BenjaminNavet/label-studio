@@ -192,6 +192,11 @@ class OrganizationMemberListAPI(generics.ListAPIView):
             **context,
         }
 
+    def filter_queryset(self, queryset):
+        from project_rbac.access import visible_members
+
+        return visible_members(super().filter_queryset(queryset), self.request.user)
+
     def get_queryset(self):
         org = generics.get_object_or_404(self.request.user.organizations, pk=self.kwargs[self.lookup_field])
         if flag_set('fix_backend_dev_3134_exclude_deactivated_users', self.request.user):

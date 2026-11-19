@@ -1,10 +1,11 @@
 """Security tests: what each project role can see and do through the public API."""
 
 import pytest
+from data_import.models import FileUpload
+from django.core.files.base import ContentFile
 from organizations.models import OrganizationMember
 from organizations.tests.factories import OrganizationFactory
 from project_rbac.models import ProjectRole, Role
-from projects.models import Project
 from projects.tests.factories import ProjectFactory
 from rest_framework.test import APIClient
 from tasks.tests.factories import AnnotationFactory, TaskFactory
@@ -101,17 +102,6 @@ class TestProjectActions:
         for name, expected in (('manager', 200), ('reviewer', 403), ('annotator', 403)):
             response = client_for(world['people'][name]).patch(url, {'title': f'by {name}'}, format='json')
             assert response.status_code == expected, name
-
-    def test_only_admin_creates_projects(self, world):
-        payload = {'title': 'new', 'label_config': LABEL_CONFIG}
-        assert client_for(world['people']['manager']).post('/api/projects/', payload, format='json').status_code == 403
-        assert client_for(world['people']['admin']).post('/api/projects/', payload, format='json').status_code == 201
-
-    def test_only_admin_deletes_projects(self, world):
-        url = f'/api/projects/{world["project_a"].id}/'
-        assert client_for(world['people']['manager']).delete(url).status_code == 403
-        assert client_for(world['people']['admin']).delete(url).status_code == 204
-        assert not Project.objects.filter(pk=world['project_a'].id).exists()
 
     def test_only_manager_imports(self, world):
         url = f'/api/projects/{world["project_a"].id}/import'
@@ -303,3 +293,52 @@ class TestProjectResolution:
 
     def test_outsider_without_role_cannot_reach_manager_endpoint_without_project(self, world):
         assert client_for(world['people']['outsider']).get('/api/storages/s3/').status_code == 403
+
+
+class TestViewsUpstreamLeavesUnchecked:
+    """Views that only required authentication upstream, or compute their permission at request time."""
+
+    @pytest.fixture
+    def uploads(self, world):
+        admin = world['people']['admin']
+        return {
+            name: FileUpload.objects.create(
+                user=admin, project=world[f'project_{name}'], file=ContentFile(b'text', name=f'{name}.txt')
+            )
+            for name in ('a', 'b')
+        }
+
+    def test_file_upload_of_foreign_project_hidden(self, world, uploads):
+        manager = client_for(world['people']['manager'])
+        url = f'/api/import/file-upload/{uploads["b"].id}'
+        assert manager.get(url).status_code in HIDDEN
+        assert manager.delete(url).status_code in HIDDEN
+        assert FileUpload.objects.filter(pk=uploads['b'].id).exists()
+
+    def test_file_upload_deletion_reserved_to_manager(self, world, uploads):
+        url = f'/api/import/file-upload/{uploads["a"].id}'
+        annotator = client_for(world['people']['annotator'])
+        assert annotator.get(url).status_code == 200
+        assert annotator.delete(url).status_code == 403
+        assert FileUpload.objects.filter(pk=uploads['a'].id).exists()
+        assert client_for(world['people']['manager']).delete(url).status_code == 204
+
+    def test_fsm_transition_requires_the_permission_of_its_entity(self, world):
+        payload = {'transition_name': 'no_such_transition'}
+        url = f'/api/fsm/entities/project/{world["project_a"].id}/transition/'
+        assert client_for(world['people']['annotator']).post(url, payload, format='json').status_code == 403
+        assert client_for(world['people']['outsider']).post(url, payload, format='json').status_code in HIDDEN
+        # The manager gets past the permission check and is stopped by the unknown transition name.
+        assert client_for(world['people']['manager']).post(url, payload, format='json').status_code == 400
+
+    def test_fsm_transition_on_foreign_project_refused(self, world):
+        manager = client_for(world['people']['manager'])
+        payload = {'transition_name': 'no_such_transition'}
+        for entity, entity_id in (('project', world['project_b'].id), ('task', world['task_b'].id)):
+            url = f'/api/fsm/entities/{entity}/{entity_id}/transition/'
+            assert manager.post(url, payload, format='json').status_code in HIDDEN, entity
+
+    def test_fsm_history_hidden_without_role(self, world):
+        annotator = client_for(world['people']['annotator'])
+        assert annotator.get(f'/api/fsm/entities/task/{world["task_b"].id}/history').status_code in HIDDEN
+        assert annotator.get(f'/api/fsm/entities/task/{world["task_a"].id}/history').status_code == 200

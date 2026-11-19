@@ -8,9 +8,11 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from projects.models import Project
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .access import is_owner
 from .models import ProjectRole
 from .roles import ROLES_MANAGE
 from .serializers import ProjectRoleSerializer
@@ -28,7 +30,7 @@ class ProjectRoleListAPI(ProjectRoleBaseAPI):
     @extend_schema(tags=['Project roles'], summary='List project roles', responses=ProjectRoleSerializer(many=True))
     def get(self, request, pk):
         project = self.get_project()
-        roles = ProjectRole.objects.filter(project=project).select_related('user')
+        roles = ProjectRole.objects.filter(project=project).select_related('user', 'project')
         return Response(ProjectRoleSerializer(roles, many=True, context={'project': project}).data)
 
     @extend_schema(
@@ -38,7 +40,10 @@ class ProjectRoleListAPI(ProjectRoleBaseAPI):
         responses=ProjectRoleSerializer,
     )
     def post(self, request, pk):
-        """Assign a role, replacing the user's previous role on the project if any."""
+        """Assign a role to an existing account, named by ``user`` id or by ``email``.
+
+        Replaces the user's previous role on the project if any.
+        """
         project = self.get_project()
         serializer = ProjectRoleSerializer(data=request.data, context={'project': project})
         serializer.is_valid(raise_exception=True)
@@ -56,5 +61,8 @@ class ProjectRoleDetailAPI(ProjectRoleBaseAPI):
     @extend_schema(tags=['Project roles'], summary='Revoke a project role', responses={204: None})
     def delete(self, request, pk, user_pk):
         project = self.get_project()
-        get_object_or_404(ProjectRole, project=project, user_id=user_pk).delete()
+        project_role = get_object_or_404(ProjectRole.objects.select_related('user'), project=project, user_id=user_pk)
+        if is_owner(project_role.user, project):
+            raise ValidationError({'user': 'The project owner cannot be removed from the project.'})
+        project_role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

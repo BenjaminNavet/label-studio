@@ -3,9 +3,17 @@
 from collections.abc import Mapping
 
 from django.apps import apps
+from django.db.models import Q
+from rest_framework.permissions import SAFE_METHODS
 
 from .models import ProjectRole, Role
-from .roles import ORG_ADMIN_ONLY, OWN_OBJECT_PERMISSIONS, roles_allowed
+from .roles import (
+    MEMBER_ORGANIZATION_PERMISSIONS,
+    OWN_OBJECT_PERMISSIONS,
+    OWNER_ONLY,
+    READ_ONLY_ORGANIZATION_PERMISSION,
+    roles_allowed,
+)
 
 # Placeholder id for a referenced project or object that does not exist.
 MISSING = -1
@@ -18,6 +26,8 @@ OBJECT_PK_ROUTES = {
     'api/drafts/<int:pk>': 'tasks.AnnotationDraft',
     'api/ml/<int:pk>': 'ml.MLBackend',
 }
+# FSM routes name their target as ``<entity_name>/<entity_id>``.
+FSM_ENTITY_MODELS = {'project': 'projects.Project', 'task': 'tasks.Task', 'annotation': 'tasks.Annotation'}
 
 
 def is_org_admin(user, organization):
@@ -25,6 +35,11 @@ def is_org_admin(user, organization):
     if user.is_superuser:
         return True
     return organization is not None and organization.created_by_id == user.id
+
+
+def is_owner(user, project):
+    """The owner of a project is the user who created it (ADR 0002)."""
+    return project.created_by_id is not None and project.created_by_id == user.id
 
 
 def get_role(user, project):
@@ -47,8 +62,8 @@ def role_allows(user, project, permission, obj=None):
     """Decide whether ``user`` may exercise ``permission`` on ``project`` (and on ``obj`` when given)."""
     if is_org_admin(user, project.organization):
         return True
-    if permission in ORG_ADMIN_ONLY:
-        return False
+    if permission in OWNER_ONLY:
+        return is_owner(user, project)
 
     role = get_role(user, project)
     if role is None or role not in roles_allowed(permission):
@@ -56,6 +71,35 @@ def role_allows(user, project, permission, obj=None):
     if role == Role.ANNOTATOR and permission in OWN_OBJECT_PERMISSIONS and obj is not None:
         return author_id(obj) == user.id
     return True
+
+
+def organization_permission_allows(user, permission, method):
+    """Decide an organization-level permission (accounts, invitations, organization settings; ADR 0003)."""
+    if is_org_admin(user, user.active_organization):
+        return True
+    if permission in MEMBER_ORGANIZATION_PERMISSIONS:
+        return True
+    return permission == READ_ONLY_ORGANIZATION_PERMISSION and method in SAFE_METHODS
+
+
+def _teammate_ids(user):
+    """Ids of the users holding a role on a project where ``user`` holds one."""
+    own_project_ids = ProjectRole.objects.filter(user=user).values('project_id')
+    return ProjectRole.objects.filter(project_id__in=own_project_ids).values('user_id')
+
+
+def visible_users(queryset, user):
+    """Restrict a user queryset to ``user`` and the people sharing at least one project with them."""
+    if is_org_admin(user, user.active_organization):
+        return queryset
+    return queryset.filter(Q(pk=user.pk) | Q(pk__in=_teammate_ids(user)))
+
+
+def visible_members(queryset, user):
+    """Same restriction as ``visible_users``, for a queryset of organization members."""
+    if is_org_admin(user, user.active_organization):
+        return queryset
+    return queryset.filter(Q(user=user) | Q(user__in=_teammate_ids(user)))
 
 
 def author_id(obj):
@@ -116,6 +160,16 @@ def resolve_project_ids(request, view):
             )
             if model is not None:
                 project_ids.add(_project_id_for_object(model, pk))
+
+    entity_name, entity_id = kwargs.get('entity_name'), _as_int(kwargs.get('entity_id'))
+    if entity_name is not None and entity_id is not None:
+        model_label = FSM_ENTITY_MODELS.get(entity_name)
+        if model_label is None:
+            project_ids.add(MISSING)
+        elif model_label == 'projects.Project':
+            project_ids.add(entity_id)
+        else:
+            project_ids.add(_project_id_for_object(apps.get_model(model_label), entity_id) or MISSING)
 
     if 'project' in request.query_params:
         project_ids.add(_as_int(request.query_params.get('project')) or MISSING)
