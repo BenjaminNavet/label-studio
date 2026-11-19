@@ -6,17 +6,19 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 compose_file="${script_dir}/docker-compose.yml"
 env_file="${script_dir}/.env"
 
-# Load BACKUP_* from .env unless already set in the environment.
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# Read one variable from .env without evaluating the file: a value may hold a space
+# (CADDY_TLS=/certs/fullchain.pem /certs/privkey.pem), which `source` would run as a command.
+read_env() {
+    local name="$1" default="$2" value=""
+    if [[ -f "${env_file}" ]]; then
+        value="$(grep -E "^${name}=" "${env_file}" | tail -n 1 | cut -d= -f2-)" || true
+    fi
+    printf '%s' "${value:-${default}}"
+}
 
-backup_dir="${BACKUP_DIR:-./backups}"
+backup_dir="${BACKUP_DIR:-$(read_env BACKUP_DIR ./backups)}"
 [[ "${backup_dir}" = /* ]] || backup_dir="${script_dir}/${backup_dir}"
-retention_days="${BACKUP_RETENTION_DAYS:-14}"
+retention_days="${BACKUP_RETENTION_DAYS:-$(read_env BACKUP_RETENTION_DAYS 14)}"
 timestamp="$(date +%Y%m%d-%H%M%S)"
 
 compose=(docker compose -f "${compose_file}" --env-file "${env_file}")

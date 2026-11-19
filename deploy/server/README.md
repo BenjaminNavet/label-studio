@@ -42,6 +42,8 @@ docker compose --env-file .env logs -f label-studio   # migrations, puis serveur
 
 Ouvrir `https://<LABEL_STUDIO_DOMAIN>` et se connecter avec `LABEL_STUDIO_USERNAME` / `LABEL_STUDIO_PASSWORD` : ce compte est propriétaire de l'organisation, donc administrateur de tous les projets. Les autres comptes se créent depuis l'interface (Organization > Accounts) ; on invite ensuite les personnes dans un projet depuis sa page Settings > Members. L'inscription libre est fermée.
 
+Le mot de passe d'un compte est généré par le serveur et affiché une seule fois à l'administrateur, qui le transmet. L'édition communautaire n'a pas d'écran de changement de mot de passe : pour en changer, l'administrateur utilise « Reset password ».
+
 ## Mode TLS (`CADDY_TLS` dans `.env`)
 
 - `internal` (défaut) : Caddy signe avec sa propre autorité, pour un nom d'hôte interne. Les navigateurs affichent un avertissement tant que cette autorité n'est pas approuvée ; son certificat racine se récupère avec `docker compose --env-file .env cp caddy:/data/caddy/pki/authorities/local/root.crt .`.
