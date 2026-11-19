@@ -22,5 +22,6 @@ label_studio/users/tests/test_hotkeys_api.py::ProjectHotkeysAPITestCase::test_pa
 label_studio/users/tests/test_hotkeys_api.py::ProjectHotkeysAPITestCase::test_project_hotkeys_are_isolated_by_project
 label_studio/users/tests/test_hotkeys_api.py::ProjectHotkeysAPITestCase::test_project_hotkeys_are_isolated_by_user
 label_studio/tests/drafts.tavern.yml::remove_other_users_draft_on_annotation_create
-label_studio/tests/test_fsm_lso_workflows.py::TestColdStartScenarios::test_bulk_task_processing_cold_start
 label_studio/tests/webhooks/webhooks.tavern.yml::crud
+label_studio/organizations/tests/test_api.py::TestOrganizationUpdateAPI::test_member_cannot_take_ownership
+label_studio/organizations/tests/test_api.py::TestOrganizationUpdateAPI::test_member_cannot_allow_unsafe_instruction_tags
