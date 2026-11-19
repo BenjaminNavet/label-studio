@@ -16,6 +16,16 @@ export const API_CONFIG = {
     inviteLink: "/invite",
     resetInviteLink: "POST:/invite/reset-token",
 
+    // Project roles and accounts (project_rbac)
+    projectRoles: "/projects/:pk/roles/",
+    assignProjectRole: "POST:/projects/:pk/roles/",
+    revokeProjectRole: "DELETE:/projects/:pk/roles/:userPk/",
+    rbacMe: "/rbac/me/",
+    accounts: "/rbac/accounts/",
+    createAccount: "POST:/rbac/accounts/",
+    updateAccount: "PATCH:/rbac/accounts/:pk/",
+    resetAccountPassword: "POST:/rbac/accounts/:pk/reset-password/",
+
     // Project
     projects: "/projects",
     project: "/projects/:pk",
