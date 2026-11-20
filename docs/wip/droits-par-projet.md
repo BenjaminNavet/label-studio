@@ -65,7 +65,7 @@ cd label_studio
 env -u VIRTUAL_ENV DJANGO_DB=sqlite ../.venv/bin/python -m pytest project_rbac -q -p no:cacheprovider
 ```
 
-`project_rbac` : 90 tests. Contrôle négatif : sur le code d'avant le chantier du 2026-11-19, 23 des
+`project_rbac` : 123 tests depuis les workspaces (`docs/wip/workspaces.md`, ADR 0004) ; 90 avant. Contrôle négatif : sur le code d'avant le chantier du 2026-11-19, 23 des
 nouveaux tests échouent et 21 sont en erreur.
 
 Suite amont complète (environ 5 min avec `-n 6`). Les tests tavern se lancent depuis la racine du dépôt,
