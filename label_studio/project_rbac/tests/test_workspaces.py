@@ -98,6 +98,13 @@ class TestWorkspaceCrud:
         assert (created['can_manage'], created['can_delete'], created['project_count']) == (True, True, 0)
         assert WorkspaceRole.objects.get(workspace_id=created['id'], user=erin).role == Role.MANAGER
 
+    def test_anonymous_is_refused(self, team):
+        anonymous = APIClient()
+        assert anonymous.get('/api/workspaces/').status_code == 401
+        assert anonymous.post('/api/workspaces/', {'title': 'x'}, format='json').status_code == 401
+        assert anonymous.get(workspace_url(team, 'roles/')).status_code == 401
+        assert anonymous.get(f'/api/projects/{team["alice_project"].id}/workspace/').status_code == 401
+
     def test_title_and_color_are_validated(self, team):
         alice = client_for(team['people']['alice'])
         assert alice.post('/api/workspaces/', {'title': '   '}, format='json').status_code == 400
@@ -222,7 +229,9 @@ class TestProjectPlacement:
         )
         assert response.status_code == 400
         assert (
-            client_for(erin).patch(f'/api/projects/{team["erin_project"].id}/workspace/', {}, format='json').status_code
+            client_for(erin)
+            .patch(f'/api/projects/{team["erin_project"].id}/workspace/', {}, format='json')
+            .status_code
             == 400
         )
 
