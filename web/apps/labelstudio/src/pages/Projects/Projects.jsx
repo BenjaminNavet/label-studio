@@ -177,8 +177,8 @@ export const ProjectsPage = () => {
 
   const handleWorkspaceDeleted = async () => {
     closeWorkspaceModal();
-    await selectWorkspace(null);
-    await fetchWorkspaces();
+    // Falls back to all projects when the deleted workspace was the selected one
+    await refreshWorkspaces();
   };
 
   React.useEffect(() => {
