@@ -1,10 +1,11 @@
 import React from "react";
 import { useHistory } from "react-router";
 import { ToggleItems } from "../../components";
-import { Button } from "@humansignal/ui";
+import { Button, useToast } from "@humansignal/ui";
 import { Modal } from "../../components/Modal/Modal";
 import { Space } from "../../components/Space/Space";
 import { HeidiTips } from "../../components/HeidiTips/HeidiTips";
+import { WorkspaceSelect } from "../../components/WorkspaceSelect/WorkspaceSelect";
 import { useAPI } from "../../providers/ApiProvider";
 import { cn } from "../../utils/bem";
 import { ConfigPage } from "./Config/Config";
@@ -15,7 +16,18 @@ import { useDraftProject } from "./utils/useDraftProject";
 import { Input, TextArea } from "../../components/Form";
 import { FF_LSDV_E_297, isFF } from "../../utils/feature-flags";
 
-const ProjectName = ({ name, setName, onSaveName, onSubmit, error, description, setDescription, show = true }) =>
+const ProjectName = ({
+  name,
+  setName,
+  onSaveName,
+  onSubmit,
+  error,
+  description,
+  setDescription,
+  workspaceId,
+  setWorkspaceId,
+  show = true,
+}) =>
   !show ? null : (
     <form
       className={cn("project-name").toClassName()}
@@ -53,6 +65,13 @@ const ProjectName = ({ name, setName, onSaveName, onSubmit, error, description, 
           className="project-description w-full"
         />
       </div>
+      <div className="w-full flex flex-col gap-2">
+        <label className="w-full">Workspace</label>
+        <WorkspaceSelect value={workspaceId} onChange={setWorkspaceId} />
+        <span className="text-neutral-content-subtler">
+          Members of the workspace get their workspace role on this project.
+        </span>
+      </div>
       {isFF(FF_LSDV_E_297) && (
         <div className="w-full flex flex-col gap-2">
           <HeidiTips collection="projectCreation" />
@@ -61,18 +80,20 @@ const ProjectName = ({ name, setName, onSaveName, onSubmit, error, description, 
     </form>
   );
 
-export const CreateProject = ({ onClose }) => {
+export const CreateProject = ({ onClose, defaultWorkspaceId = null }) => {
   const [step, _setStep] = React.useState("name"); // name | import | config
   const [waiting, setWaitingStatus] = React.useState(false);
 
   const { project, setProject: updateProject } = useDraftProject();
   const history = useHistory();
   const api = useAPI();
+  const toast = useToast();
 
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState();
   const [description, setDescription] = React.useState("");
   const [sample, setSample] = React.useState(null);
+  const [workspaceId, setWorkspaceId] = React.useState(defaultWorkspaceId);
 
   const setStep = React.useCallback((step) => {
     _setStep(step);
@@ -124,6 +145,18 @@ export const CreateProject = ({ onClose }) => {
 
     if (response === null) return;
 
+    if (workspaceId !== null) {
+      const workspaceResult = await api.callApi("setProjectWorkspace", {
+        params: { pk: project.id },
+        body: { workspace: workspaceId },
+        suppressError: true,
+      });
+
+      if (workspaceResult?.error) {
+        toast.show({ message: workspaceResult.response?.detail ?? "Could not set the workspace", type: "error" });
+      }
+    }
+
     const imported = await finishUpload();
 
     if (!imported) return;
@@ -137,7 +170,7 @@ export const CreateProject = ({ onClose }) => {
     setWaitingStatus(false);
 
     history.push(`/projects/${response.id}/data`);
-  }, [project, projectBody, finishUpload]);
+  }, [project, projectBody, finishUpload, workspaceId]);
 
   const onSaveName = async () => {
     if (error) return;
@@ -208,6 +241,8 @@ export const CreateProject = ({ onClose }) => {
           onSubmit={onCreate}
           description={description}
           setDescription={setDescription}
+          workspaceId={workspaceId}
+          setWorkspaceId={setWorkspaceId}
           show={step === "name"}
         />
         <ImportPage
