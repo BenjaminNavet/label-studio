@@ -1,5 +1,6 @@
 # Local check of the per-project roles fork: fork image + Postgres, bound to 127.0.0.1 only.
 # Build the image first, from the repository root: docker build -t label-studio-rbac:local .
+# Another tag: LABEL_STUDIO_IMAGE=label-studio-rbac:next docker compose up -d
 
 services:
   postgres:
@@ -17,7 +18,7 @@ services:
       retries: 20
 
   label-studio:
-    image: label-studio-rbac:local
+    image: ${LABEL_STUDIO_IMAGE:-label-studio-rbac:local}
     depends_on:
       postgres:
         condition: service_healthy
