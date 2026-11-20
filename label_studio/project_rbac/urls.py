@@ -1,7 +1,7 @@
 from django.urls import path
 from organizations.views import simple_view
 
-from . import accounts, api
+from . import accounts, api, workspaces
 
 app_name = 'project_rbac'
 
@@ -18,4 +18,13 @@ urlpatterns = [
         accounts.AccountResetPasswordAPI.as_view(),
         name='account-reset-password',
     ),
+    path('api/workspaces/', workspaces.WorkspaceListAPI.as_view(), name='workspace-list'),
+    path('api/workspaces/<int:pk>/', workspaces.WorkspaceDetailAPI.as_view(), name='workspace-detail'),
+    path('api/workspaces/<int:pk>/roles/', workspaces.WorkspaceRoleListAPI.as_view(), name='workspace-role-list'),
+    path(
+        'api/workspaces/<int:pk>/roles/<int:user_pk>/',
+        workspaces.WorkspaceRoleDetailAPI.as_view(),
+        name='workspace-role-detail',
+    ),
+    path('api/projects/<int:pk>/workspace/', workspaces.ProjectWorkspaceAPI.as_view(), name='project-workspace'),
 ]

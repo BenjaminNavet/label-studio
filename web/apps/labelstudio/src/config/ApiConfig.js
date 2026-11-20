@@ -26,6 +26,18 @@ export const API_CONFIG = {
     updateAccount: "PATCH:/rbac/accounts/:pk/",
     resetAccountPassword: "POST:/rbac/accounts/:pk/reset-password/",
 
+    // Workspaces (project_rbac, ADR 0004)
+    workspaces: "/workspaces/",
+    createWorkspace: "POST:/workspaces/",
+    workspace: "/workspaces/:pk/",
+    updateWorkspace: "PATCH:/workspaces/:pk/",
+    deleteWorkspace: "DELETE:/workspaces/:pk/",
+    workspaceRoles: "/workspaces/:pk/roles/",
+    assignWorkspaceRole: "POST:/workspaces/:pk/roles/",
+    revokeWorkspaceRole: "DELETE:/workspaces/:pk/roles/:userPk/",
+    projectWorkspace: "/projects/:pk/workspace/",
+    setProjectWorkspace: "PUT:/projects/:pk/workspace/",
+
     // Project
     projects: "/projects",
     project: "/projects/:pk",
