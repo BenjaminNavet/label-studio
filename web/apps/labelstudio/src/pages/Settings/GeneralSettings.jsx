@@ -91,7 +91,7 @@ export const GeneralSettings = () => {
 
               <TextArea name="description" label="Description" style={{ minHeight: 128 }} />
               <div className="flex flex-col gap-2">
-                <label className="text-lg font-medium">Workspace</label>
+                <label className="text-sm font-medium text-neutral-content">Workspace</label>
                 <WorkspaceSelect
                   key={workspaceSelectVersion}
                   value={workspaceState.workspace?.id ?? null}

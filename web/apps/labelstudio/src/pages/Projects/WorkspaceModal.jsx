@@ -76,7 +76,7 @@ export const WorkspaceModal = ({ workspace, onClose, onSaved, onDeleted }) => {
     <Modal
       visible
       title={isEdit ? "Workspace settings" : "New workspace"}
-      width={560}
+      width={720}
       closeOnClickOutside={false}
       onHide={onClose}
       data-testid="workspace-modal"
@@ -144,7 +144,7 @@ export const WorkspaceModal = ({ workspace, onClose, onSaved, onDeleted }) => {
         </form>
         {isEdit && workspace.can_manage && (
           <div className={block.elem("members").toClassName()}>
-            <Typography variant="headline" size="medium">
+            <Typography variant="title" size="large" className="mb-base">
               Members
             </Typography>
             <RoleMembers
