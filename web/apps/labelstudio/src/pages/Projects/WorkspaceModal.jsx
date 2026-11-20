@@ -63,7 +63,9 @@ export const WorkspaceModal = ({ workspace, onClose, onSaved, onDeleted }) => {
   const confirmDelete = () => {
     confirm({
       title: "Delete workspace",
-      body: `Delete the workspace "${workspace.title}"? Its projects are kept: they are only detached from the workspace and will appear under "No workspace".`,
+      body:
+        `Delete the workspace "${workspace.title}"? Its projects are kept: ` +
+        `they are only detached from the workspace and will appear under "No workspace".`,
       okText: "Delete",
       buttonLook: "negative",
       onOk: deleteWorkspace,
@@ -142,7 +144,7 @@ export const WorkspaceModal = ({ workspace, onClose, onSaved, onDeleted }) => {
         </form>
         {isEdit && workspace.can_manage && (
           <div className={block.elem("members").toClassName()}>
-            <Typography variant="headline" size="small">
+            <Typography variant="headline" size="medium">
               Members
             </Typography>
             <RoleMembers

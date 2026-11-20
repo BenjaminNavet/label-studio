@@ -257,3 +257,132 @@
     }
   }
 }
+
+.projects-page__content {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.projects-page__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.projects-page__empty-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6rem;
+  color: var(--color-neutral-content-subtle);
+}
+
+.workspaces-sidebar {
+  flex: 0 0 240px;
+  width: 240px;
+  box-sizing: border-box;
+  padding: 24px 12px;
+  border-right: 1px solid var(--color-neutral-border);
+  background: var(--color-neutral-background);
+
+  &__list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+
+    &:hover {
+      background: var(--color-neutral-surface);
+    }
+
+    &_selected {
+      background: var(--color-neutral-surface-hover);
+      font-weight: 600;
+    }
+  }
+
+  &__entry {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--color-neutral-content);
+    font: inherit;
+  }
+
+  &__dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--workspace-color);
+    border: 1px solid var(--color-neutral-border);
+  }
+
+  &__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__count {
+    color: var(--color-neutral-content-subtle);
+    font-size: 12px;
+  }
+
+  &__settings {
+    flex: none;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    color: var(--color-neutral-content-subtle);
+
+    &:hover {
+      color: var(--color-neutral-content);
+    }
+  }
+}
+
+.workspace-modal {
+  &__colors {
+    display: flex;
+    gap: 8px;
+  }
+
+  &__color {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: var(--workspace-color);
+    border: 1px solid var(--color-neutral-border);
+
+    &_selected {
+      outline: 2px solid var(--color-primary-border-bold);
+      outline-offset: 2px;
+    }
+  }
+
+  &__members {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-neutral-border);
+  }
+}

@@ -10,6 +10,8 @@ import { cn } from "../../utils/bem";
 import { CreateProject } from "../CreateProject/CreateProject";
 import { DataManagerPage } from "../DataManager/DataManager";
 import { SettingsPage } from "../Settings";
+import { WorkspaceModal } from "./WorkspaceModal";
+import { WorkspacesSidebar } from "./WorkspacesSidebar";
 import { EmptyProjectsList, ProjectsList } from "./ProjectsList";
 import { useAbortController, useUpdatePageTitle } from "@humansignal/core";
 import "./Projects.prefix.css";
@@ -20,6 +22,16 @@ const getCurrentPage = () => {
   return pageNumberFromURL ? Number.parseInt(pageNumberFromURL) : 1;
 };
 
+/** Workspace filter from the URL: `null` (all projects), "none" or a workspace id. */
+const getCurrentWorkspace = () => {
+  const workspaceFromURL = new URLSearchParams(location.search).get("workspace");
+
+  if (workspaceFromURL === "none") return "none";
+  const workspaceId = Number.parseInt(workspaceFromURL ?? "", 10);
+
+  return Number.isNaN(workspaceId) ? null : workspaceId;
+};
+
 export const ProjectsPage = () => {
   const api = React.useContext(ApiContext);
   const abortController = useAbortController();
@@ -27,6 +39,10 @@ export const ProjectsPage = () => {
   const [networkState, setNetworkState] = React.useState(null);
   const [currentPage, setCurrentPage] = useState(getCurrentPage());
   const [totalItems, setTotalItems] = useState(1);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [selectedWorkspace, setSelectedWorkspace] = useState(getCurrentWorkspace());
+  // `false` = closed, `true` = creation, a workspace object = settings
+  const [workspaceModal, setWorkspaceModal] = useState(false);
   const setContextProps = useContextProps();
 
   useUpdatePageTitle("Projects");
@@ -38,7 +54,28 @@ export const ProjectsPage = () => {
 
   const closeModal = () => setModal(false);
 
-  const fetchProjects = async (page = currentPage, pageSize = defaultPageSize) => {
+  const fetchWorkspaces = async () => {
+    const result = await api.callApi("workspaces", { suppressError: true });
+
+    if (Array.isArray(result)) {
+      setWorkspaces(result);
+      return result;
+    }
+    return null;
+  };
+
+  const updateWorkspaceInURL = (workspace) => {
+    const searchParams = new URLSearchParams(location.search);
+
+    searchParams.delete("page");
+    if (workspace === null) searchParams.delete("workspace");
+    else searchParams.set("workspace", String(workspace));
+    const search = searchParams.toString();
+
+    history.replaceState(null, "", `${location.pathname}${search ? `?${search}` : ""}${location.hash}`);
+  };
+
+  const fetchProjects = async (page = currentPage, pageSize = defaultPageSize, workspace = selectedWorkspace) => {
     setNetworkState("loading");
     abortController.renew(); // Cancel any in flight requests
 
@@ -54,6 +91,8 @@ export const ProjectsPage = () => {
       "assignment_settings",
       "state",
     ].join(",");
+
+    if (workspace !== null) requestParams.workspace = workspace;
 
     const data = await api.callApi("projects", {
       params: requestParams,
@@ -106,15 +145,68 @@ export const ProjectsPage = () => {
     await fetchProjects(page, pageSize);
   };
 
+  const selectWorkspace = async (workspace) => {
+    setSelectedWorkspace(workspace);
+    setCurrentPage(1);
+    updateWorkspaceInURL(workspace);
+    await fetchProjects(1, defaultPageSize, workspace);
+  };
+
+  const refreshWorkspaces = async () => {
+    const fetchedWorkspaces = await fetchWorkspaces();
+    const isSelectionMissing =
+      typeof selectedWorkspace === "number" &&
+      fetchedWorkspaces !== null &&
+      !fetchedWorkspaces.some(({ id }) => id === selectedWorkspace);
+
+    if (isSelectionMissing) {
+      await selectWorkspace(null);
+      return;
+    }
+    await fetchProjects(currentPage, defaultPageSize, selectedWorkspace);
+  };
+
+  const closeWorkspaceModal = () => setWorkspaceModal(false);
+
+  const handleWorkspaceSaved = async (savedWorkspace) => {
+    closeWorkspaceModal();
+    await refreshWorkspaces();
+    // Creating a workspace selects it so that its (empty) content is shown right away
+    if (workspaceModal === true && savedWorkspace?.id) await selectWorkspace(savedWorkspace.id);
+  };
+
+  const handleWorkspaceDeleted = async () => {
+    closeWorkspaceModal();
+    await selectWorkspace(null);
+    await fetchWorkspaces();
+  };
+
   React.useEffect(() => {
-    fetchProjects();
+    // The selection can point to a deleted workspace: fall back to all projects.
+    fetchWorkspaces().then((fetchedWorkspaces) => {
+      const isSelectionMissing =
+        typeof selectedWorkspace === "number" &&
+        fetchedWorkspaces !== null &&
+        !fetchedWorkspaces.some(({ id }) => id === selectedWorkspace);
+
+      if (isSelectionMissing) {
+        selectWorkspace(null);
+      } else {
+        fetchProjects();
+      }
+    });
   }, []);
+
+  const hasActiveFilter = selectedWorkspace !== null;
 
   React.useEffect(() => {
     // there is a nice page with Create button when list is empty
-    // so don't show the context button in that case
-    setContextProps({ openModal, showButton: projectsList.length > 0 });
-  }, [projectsList.length]);
+    // so don't show the context button in that case (unless a filter is active)
+    setContextProps({ openModal, showButton: projectsList.length > 0 || hasActiveFilter });
+  }, [projectsList.length, hasActiveFilter]);
+
+  const selectedWorkspaceObject = workspaces.find(({ id }) => id === selectedWorkspace);
+  const defaultWorkspaceId = selectedWorkspaceObject?.can_manage ? selectedWorkspaceObject.id : null;
 
   return (
     <div className={cn("projects-page").toClassName()}>
@@ -123,18 +215,45 @@ export const ProjectsPage = () => {
           <Spinner size={64} />
         </div>
         <div className={cn("projects-page").elem("content").toClassName()} case="loaded">
-          {projectsList.length ? (
-            <ProjectsList
-              projects={projectsList}
-              currentPage={currentPage}
-              totalItems={totalItems}
-              loadNextPage={loadNextPage}
-              pageSize={defaultPageSize}
+          <WorkspacesSidebar
+            workspaces={workspaces}
+            selected={selectedWorkspace}
+            onSelect={selectWorkspace}
+            onCreate={() => setWorkspaceModal(true)}
+            onEdit={setWorkspaceModal}
+          />
+          <div className={cn("projects-page").elem("main").toClassName()}>
+            {projectsList.length ? (
+              <ProjectsList
+                projects={projectsList}
+                currentPage={currentPage}
+                totalItems={totalItems}
+                loadNextPage={loadNextPage}
+                pageSize={defaultPageSize}
+              />
+            ) : hasActiveFilter ? (
+              <div
+                className={cn("projects-page").elem("empty-filter").toClassName()}
+                data-testid="projects-empty-filter"
+              >
+                <p>No projects in this workspace</p>
+                <Button onClick={openModal} size="small" aria-label="Create new project">
+                  Create
+                </Button>
+              </div>
+            ) : (
+              <EmptyProjectsList openModal={openModal} />
+            )}
+          </div>
+          {modal && <CreateProject onClose={closeModal} defaultWorkspaceId={defaultWorkspaceId} />}
+          {workspaceModal !== false && (
+            <WorkspaceModal
+              workspace={workspaceModal === true ? undefined : workspaceModal}
+              onClose={closeWorkspaceModal}
+              onSaved={handleWorkspaceSaved}
+              onDeleted={handleWorkspaceDeleted}
             />
-          ) : (
-            <EmptyProjectsList openModal={openModal} />
           )}
-          {modal && <CreateProject onClose={closeModal} />}
         </div>
       </Oneof>
     </div>
