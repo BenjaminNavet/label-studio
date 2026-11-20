@@ -28,6 +28,7 @@ from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiRespo
 from label_studio_sdk.label_interface.interface import LabelInterface
 from ml.serializers import MLBackendSerializer
 from project_rbac.access import visible_projects
+from project_rbac.filters import filter_projects_by_workspace
 from projects.functions.next_task import get_next_task
 from projects.functions.search import search_projects
 from projects.functions.stream_history import get_label_stream_history
@@ -90,6 +91,8 @@ class ProjectImportJobListPagination(PageNumberPagination):
 class ProjectFilterSet(FilterSet):
     ids = NumberInFilter(field_name='id', lookup_expr='in')
     title = CharFilter(field_name='title', lookup_expr='icontains')
+    # project_rbac: `?workspace=<id>` or `?workspace=none` (ADR 0004)
+    workspace = CharFilter(method=filter_projects_by_workspace)
 
 
 @method_decorator(

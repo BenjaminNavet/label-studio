@@ -5,13 +5,18 @@ Décision : `docs/decisions/0004-workspaces.md`. Socle : `docs/wip/droits-par-pr
 ## État
 
 - [x] Lot 1 — cadrage : ADR 0004, cette note, squelette (modèles, routes, tests désactivés)
-- [ ] Lot 2 — dossiers : CRUD des workspaces, rattachement d'un projet, filtre `?workspace=`
-- [ ] Lot 3 — droits : rôle effectif dans `access.py`, API des membres, tests de sécurité
-- [ ] Lot 4 — interface : barre latérale des workspaces sur la page Projects
-- [ ] Lot 5 — interface : sélecteur « Workspace » (création, réglages généraux), fenêtre du workspace
+- [x] Lot 2 — dossiers : CRUD des workspaces (`workspaces.py`), rattachement d'un projet, filtre
+      `?workspace=` (`filters.py`, branché dans `ProjectFilterSet`)
+- [x] Lot 3 — droits : rôle effectif dans `access.py` (`get_role`, `in_user_projects`, `_teammates`,
+      `managed_by`, règles `can_*_workspace` / `can_*_project`), API des membres, 32 tests
+      (`tests/test_workspaces.py`) ; `project_rbac` : 122 tests
+- [x] Lot 4 — interface : barre latérale des workspaces sur la page Projects (écrit, pas encore compilé)
+- [x] Lot 5 — interface : sélecteur « Workspace » (création, réglages généraux), fenêtre du workspace,
+      `RoleMembers` partagé (écrit, pas encore compilé)
 - [ ] Lot 6 — intégration : image Docker, scénario d'API, interface en headless, suite amont
 
-Prochaine étape : lot 2.
+Prochaine étape : lot 6. Relire le code d'interface des lots 4 et 5 (aucune compilation possible sur ce
+poste), construire l'image, essayer en headless, puis lancer la suite amont.
 
 ## Contrat d'API
 

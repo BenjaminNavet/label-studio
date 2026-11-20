@@ -15,12 +15,13 @@ class ProjectRolePermission(BasePermission):
     def has_permission(self, request, view):
         from .access import (
             MISSING,
+            holds_role_somewhere,
             is_org_admin,
             organization_permission_allows,
             resolve_project_ids,
             role_allows,
         )
-        from .models import ProjectRole, Role
+        from .models import Role
         from .roles import MEMBER_PERMISSIONS, NON_PROJECT_PERMISSION_PREFIXES, required_permission, roles_allowed
 
         user = request.user
@@ -48,7 +49,7 @@ class ProjectRolePermission(BasePermission):
             if Role.ANNOTATOR in allowed_roles:
                 # Every role holds it: listings are filtered by project visibility, not refused.
                 return True
-            return ProjectRole.objects.filter(user=user, role__in=allowed_roles).exists()
+            return holds_role_somewhere(user, allowed_roles)
         if MISSING in project_ids:
             return False
         projects = list(

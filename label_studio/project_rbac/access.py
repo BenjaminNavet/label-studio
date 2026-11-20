@@ -1,4 +1,4 @@
-"""Access decisions: who is an organization admin, who sees which project, who may do what."""
+"""Access decisions: who is an organization admin, who sees which project or workspace, who may do what."""
 
 from collections.abc import Mapping
 
@@ -6,8 +6,9 @@ from django.apps import apps
 from django.db.models import Q
 from rest_framework.permissions import SAFE_METHODS
 
-from .models import ProjectRole, Role
+from .models import ProjectRole, Role, WorkspaceProject, WorkspaceRole
 from .roles import (
+    MANAGERS,
     MEMBER_ORGANIZATION_PERMISSIONS,
     OWN_OBJECT_PERMISSIONS,
     OWNER_ONLY,
@@ -15,6 +16,8 @@ from .roles import (
     roles_allowed,
 )
 
+# Roles from the least to the most powerful: the effective role is the highest one held (ADR 0004).
+ROLE_ORDER = (Role.ANNOTATOR, Role.REVIEWER, Role.MANAGER)
 # Placeholder id for a referenced project or object that does not exist.
 MISSING = -1
 # Route prefixes whose ``pk`` is a project id.
@@ -37,21 +40,73 @@ def is_org_admin(user, organization):
     return organization is not None and organization.created_by_id == user.id
 
 
-def is_owner(user, project):
-    """The owner of a project is the user who created it (ADR 0002)."""
-    return project.created_by_id is not None and project.created_by_id == user.id
+def is_owner(user, owned):
+    """The owner of a project or of a workspace is the user who created it (ADR 0002, ADR 0004)."""
+    return owned.created_by_id is not None and owned.created_by_id == user.id
+
+
+def highest_role(*roles):
+    """Return the most powerful of ``roles``, ignoring None; None when none is held."""
+    held = [role for role in roles if role is not None]
+    return max(held, key=ROLE_ORDER.index) if held else None
+
+
+def get_direct_role(user, project):
+    """Return the role ``user`` was given on ``project`` itself, or None."""
+    return ProjectRole.objects.filter(project=project, user=user).values_list('role', flat=True).first()
+
+
+def get_workspace_role(user, workspace):
+    """Return the user's role in ``workspace``, or None."""
+    return WorkspaceRole.objects.filter(workspace=workspace, user=user).values_list('role', flat=True).first()
+
+
+def get_inherited_role(user, project):
+    """Return the role ``user`` holds in the workspace containing ``project``, or None."""
+    return (
+        WorkspaceRole.objects.filter(workspace__project_links__project=project, user=user)
+        .values_list('role', flat=True)
+        .first()
+    )
 
 
 def get_role(user, project):
-    """Return the user's role on ``project``, or None."""
-    return ProjectRole.objects.filter(project=project, user=user).values_list('role', flat=True).first()
+    """Return the user's effective role on ``project``: the highest of the direct and the inherited one."""
+    return highest_role(get_direct_role(user, project), get_inherited_role(user, project))
+
+
+def _role_project_ids(user, roles=None):
+    """Return two subqueries: the ids of the projects where ``user`` holds a direct role, and an inherited one.
+
+    With ``roles``, only those roles count. Role sets are upward-closed (ADR 0004), so the effective role
+    belongs to ``roles`` exactly when the direct role or the inherited role does: no need to compare them.
+    """
+    direct_roles = ProjectRole.objects.filter(user=user)
+    workspace_roles = WorkspaceRole.objects.filter(user=user)
+    if roles is not None:
+        direct_roles = direct_roles.filter(role__in=roles)
+        workspace_roles = workspace_roles.filter(role__in=roles)
+    inherited = WorkspaceProject.objects.filter(workspace_id__in=workspace_roles.values('workspace_id'))
+    return direct_roles.values('project_id'), inherited.values('project_id')
+
+
+def in_user_projects(user, field='pk', roles=None):
+    """Build the filter keeping rows whose ``field`` is a project where ``user`` holds a role (among ``roles``)."""
+    direct, inherited = _role_project_ids(user, roles)
+    return Q(**{f'{field}__in': direct}) | Q(**{f'{field}__in': inherited})
+
+
+def holds_role_somewhere(user, roles):
+    """Tell whether ``user`` holds one of ``roles`` on at least one project."""
+    direct, inherited = _role_project_ids(user, roles)
+    return direct.exists() or inherited.exists()
 
 
 def visible_projects(queryset, user):
     """Restrict a project queryset to the projects ``user`` may see."""
     if is_org_admin(user, user.active_organization):
         return queryset
-    return queryset.filter(rbac_roles__user=user)
+    return queryset.filter(in_user_projects(user))
 
 
 def can_see_project(user, project):
@@ -82,24 +137,34 @@ def organization_permission_allows(user, permission, method):
     return permission == READ_ONLY_ORGANIZATION_PERMISSION and method in SAFE_METHODS
 
 
-def _teammate_ids(user):
-    """Ids of the users holding a role on a project where ``user`` holds one."""
-    own_project_ids = ProjectRole.objects.filter(user=user).values('project_id')
-    return ProjectRole.objects.filter(project_id__in=own_project_ids).values('user_id')
+def _teammates(user, field):
+    """Build the filter keeping rows whose ``field`` is a teammate of ``user``.
+
+    Teammates hold a role, direct or inherited, on a project where ``user`` holds one, or belong to one
+    of the user's workspaces.
+    """
+    shared_projects = in_user_projects(user, 'project_id')
+    direct_teammates = ProjectRole.objects.filter(shared_projects).values('user_id')
+    own_workspaces = WorkspaceRole.objects.filter(user=user).values('workspace_id')
+    workspaces_of_shared_projects = WorkspaceProject.objects.filter(shared_projects).values('workspace_id')
+    workspace_teammates = WorkspaceRole.objects.filter(
+        Q(workspace_id__in=own_workspaces) | Q(workspace_id__in=workspaces_of_shared_projects)
+    ).values('user_id')
+    return Q(**{f'{field}__in': direct_teammates}) | Q(**{f'{field}__in': workspace_teammates})
 
 
 def visible_users(queryset, user):
     """Restrict a user queryset to ``user`` and the people sharing at least one project with them."""
     if is_org_admin(user, user.active_organization):
         return queryset
-    return queryset.filter(Q(pk=user.pk) | Q(pk__in=_teammate_ids(user)))
+    return queryset.filter(Q(pk=user.pk) | _teammates(user, 'pk'))
 
 
 def visible_members(queryset, user):
     """Same restriction as ``visible_users``, for a queryset of organization members."""
     if is_org_admin(user, user.active_organization):
         return queryset
-    return queryset.filter(Q(user=user) | Q(user__in=_teammate_ids(user)))
+    return queryset.filter(Q(user=user) | _teammates(user, 'user'))
 
 
 def author_id(obj):
@@ -192,5 +257,36 @@ def managed_by(queryset, user, project_field='project'):
     """
     if is_org_admin(user, user.active_organization):
         return queryset
-    managed_project_ids = ProjectRole.objects.filter(user=user, role=Role.MANAGER).values('project_id')
-    return queryset.filter(**{f'{project_field}__in': managed_project_ids})
+    return queryset.filter(in_user_projects(user, project_field, roles=MANAGERS))
+
+
+def visible_workspaces(queryset, user):
+    """Restrict a workspace queryset to those ``user`` may see: their own, or all of them for an administrator."""
+    queryset = queryset.filter(organization=user.active_organization)
+    if is_org_admin(user, user.active_organization):
+        return queryset
+    return queryset.filter(pk__in=WorkspaceRole.objects.filter(user=user).values('workspace_id'))
+
+
+def can_manage_workspace(user, workspace):
+    """Renaming a workspace and managing its members belong to its managers."""
+    return is_org_admin(user, workspace.organization) or get_workspace_role(user, workspace) == Role.MANAGER
+
+
+def can_delete_workspace(user, workspace):
+    """Deleting a workspace belongs to its owner, as deleting a project does (ADR 0002)."""
+    return is_org_admin(user, workspace.organization) or is_owner(user, workspace)
+
+
+def can_attach_project(user, project, workspace):
+    """Placing a project in a workspace opens it to every member: only its owner may, into a workspace they manage."""
+    if is_org_admin(user, project.organization):
+        return True
+    return is_owner(user, project) and get_workspace_role(user, workspace) == Role.MANAGER
+
+
+def can_detach_project(user, project, workspace):
+    """Taking a project out of its workspace belongs to the project owner and to the workspace managers."""
+    if is_org_admin(user, project.organization) or is_owner(user, project):
+        return True
+    return get_workspace_role(user, workspace) == Role.MANAGER

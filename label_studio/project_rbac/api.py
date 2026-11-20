@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from .access import is_owner
 from .models import ProjectRole
 from .roles import ROLES_MANAGE
-from .serializers import ProjectRoleSerializer
+from .serializers import ProjectRoleSerializer, project_member_rows
 
 
 class ProjectRoleBaseAPI(APIView):
@@ -29,9 +29,8 @@ class ProjectRoleBaseAPI(APIView):
 class ProjectRoleListAPI(ProjectRoleBaseAPI):
     @extend_schema(tags=['Project roles'], summary='List project roles', responses=ProjectRoleSerializer(many=True))
     def get(self, request, pk):
-        project = self.get_project()
-        roles = ProjectRole.objects.filter(project=project).select_related('user', 'project')
-        return Response(ProjectRoleSerializer(roles, many=True, context={'project': project}).data)
+        # Members inherited from the project's workspace are listed too, read-only (ADR 0004).
+        return Response(project_member_rows(self.get_project()))
 
     @extend_schema(
         tags=['Project roles'],
