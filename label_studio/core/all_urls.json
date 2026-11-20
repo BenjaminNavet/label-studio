@@ -1146,6 +1146,144 @@
         "decorators": ""
     },
     {
+        "url": "/api/workspaces/",
+        "module": "project_rbac.workspaces.WorkspaceListAPI",
+        "name": "project_rbac:workspace-list",
+        "decorators": ""
+    },
+    {
+        "url": "/api/workspaces/<int:pk>/",
+        "module": "project_rbac.workspaces.WorkspaceDetailAPI",
+        "name": "project_rbac:workspace-detail",
+        "decorators": ""
+    },
+    {
+        "url": "/api/workspaces/<int:pk>/roles/",
+        "module": "project_rbac.workspaces.WorkspaceRoleListAPI",
+        "name": "project_rbac:workspace-role-list",
+        "decorators": ""
+    },
+    {
+        "url": "/api/workspaces/<int:pk>/roles/<int:user_pk>/",
+        "module": "project_rbac.workspaces.WorkspaceRoleDetailAPI",
+        "name": "project_rbac:workspace-role-detail",
+        "decorators": ""
+    },
+    {
+        "url": "/api/projects/<int:pk>/workspace/",
+        "module": "project_rbac.workspaces.ProjectWorkspaceAPI",
+        "name": "project_rbac:project-workspace",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/",
+        "module": "django.contrib.admin.options.changelist_view",
+        "name": "admin:project_rbac_workspace_changelist",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/add/",
+        "module": "django.contrib.admin.options.add_view",
+        "name": "admin:project_rbac_workspace_add",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/<path:object_id>/history/",
+        "module": "django.contrib.admin.options.history_view",
+        "name": "admin:project_rbac_workspace_history",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/<path:object_id>/delete/",
+        "module": "django.contrib.admin.options.delete_view",
+        "name": "admin:project_rbac_workspace_delete",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/<path:object_id>/change/",
+        "module": "django.contrib.admin.options.change_view",
+        "name": "admin:project_rbac_workspace_change",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspace/<path:object_id>/",
+        "module": "django.views.generic.base.RedirectView",
+        "name": "",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/",
+        "module": "django.contrib.admin.options.changelist_view",
+        "name": "admin:project_rbac_workspaceproject_changelist",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/add/",
+        "module": "django.contrib.admin.options.add_view",
+        "name": "admin:project_rbac_workspaceproject_add",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/<path:object_id>/history/",
+        "module": "django.contrib.admin.options.history_view",
+        "name": "admin:project_rbac_workspaceproject_history",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/<path:object_id>/delete/",
+        "module": "django.contrib.admin.options.delete_view",
+        "name": "admin:project_rbac_workspaceproject_delete",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/<path:object_id>/change/",
+        "module": "django.contrib.admin.options.change_view",
+        "name": "admin:project_rbac_workspaceproject_change",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspaceproject/<path:object_id>/",
+        "module": "django.views.generic.base.RedirectView",
+        "name": "",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/",
+        "module": "django.contrib.admin.options.changelist_view",
+        "name": "admin:project_rbac_workspacerole_changelist",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/add/",
+        "module": "django.contrib.admin.options.add_view",
+        "name": "admin:project_rbac_workspacerole_add",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/<path:object_id>/history/",
+        "module": "django.contrib.admin.options.history_view",
+        "name": "admin:project_rbac_workspacerole_history",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/<path:object_id>/delete/",
+        "module": "django.contrib.admin.options.delete_view",
+        "name": "admin:project_rbac_workspacerole_delete",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/<path:object_id>/change/",
+        "module": "django.contrib.admin.options.change_view",
+        "name": "admin:project_rbac_workspacerole_change",
+        "decorators": ""
+    },
+    {
+        "url": "/admin/project_rbac/workspacerole/<path:object_id>/",
+        "module": "django.views.generic.base.RedirectView",
+        "name": "",
+        "decorators": ""
+    },
+    {
         "url": "/api/labels/",
         "module": "labels_manager.api.LabelAPI",
         "name": "labels_manager:api-labels:label-list",
