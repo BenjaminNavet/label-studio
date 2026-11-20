@@ -6,7 +6,7 @@ const NO_WORKSPACE_VALUE = "none";
 
 /**
  * Workspace picker. Offers "No workspace" plus the workspaces the user can manage.
- * `extraOption` ({id, title}) is added when missing, so the current workspace of a project is always displayed.
+ * `onChange(idOrNull, title)`. `extraOption` ({id, title}) is added when missing, so the current workspace of a project is always displayed.
  */
 export const WorkspaceSelect = ({ value, onChange, disabled, extraOption }) => {
   const api = useAPI();
@@ -42,7 +42,14 @@ export const WorkspaceSelect = ({ value, onChange, disabled, extraOption }) => {
     <Select
       options={options}
       value={value === null || value === undefined ? NO_WORKSPACE_VALUE : String(value)}
-      onChange={(selectedValue) => onChange(selectedValue === NO_WORKSPACE_VALUE ? null : Number(selectedValue))}
+      onChange={(selectedValue) => {
+        if (selectedValue === NO_WORKSPACE_VALUE) {
+          onChange(null, null);
+          return;
+        }
+        const selectedOption = options.find((option) => option.value === selectedValue);
+        onChange(Number(selectedValue), selectedOption?.label);
+      }}
       disabled={disabled}
       testId="workspace-select"
     />

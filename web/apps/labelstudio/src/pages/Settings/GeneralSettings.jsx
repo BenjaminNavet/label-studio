@@ -1,7 +1,10 @@
-import { Badge, Button, Tooltip } from "@humansignal/ui";
-import { useCallback, useContext } from "react";
+import { Badge, Button, Tooltip, useToast } from "@humansignal/ui";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { IconSpark } from "@humansignal/icons";
 import { Form, Input, TextArea } from "../../components/Form";
+import { confirm } from "../../components/Modal/Modal";
+import { WorkspaceSelect } from "../../components/WorkspaceSelect/WorkspaceSelect";
+import { useAPI } from "../../providers/ApiProvider";
 import { RadioGroup } from "../../components/Form/Elements/RadioGroup/RadioGroup";
 import { ProjectContext } from "../../providers/ProjectProvider";
 import { cn } from "../../utils/bem";
@@ -11,6 +14,56 @@ import { createURL } from "../../components/HeidiTips/utils";
 
 export const GeneralSettings = () => {
   const { project, fetchProject } = useContext(ProjectContext);
+
+  const api = useAPI();
+  const toast = useToast();
+  const [workspaceState, setWorkspaceState] = useState({ workspace: null, can_change: false });
+
+  const projectId = project?.id;
+
+  useEffect(() => {
+    if (!projectId) return;
+    let cancelled = false;
+
+    const fetchWorkspace = async () => {
+      const result = await api.callApi("projectWorkspace", { params: { pk: projectId }, suppressError: true });
+      if (cancelled || result?.error) return;
+      setWorkspaceState({ workspace: result?.workspace ?? null, can_change: !!result?.can_change });
+    };
+
+    fetchWorkspace();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, projectId]);
+
+  const applyWorkspace = async (workspaceId) => {
+    const result = await api.callApi("setProjectWorkspace", {
+      params: { pk: projectId },
+      body: { workspace: workspaceId },
+      suppressError: true,
+    });
+
+    if (result?.error) {
+      toast.show({ message: result.response?.detail ?? "Could not update the workspace", type: "error" });
+      return;
+    }
+    toast.show({ message: "Workspace updated" });
+    setWorkspaceState({ workspace: result?.workspace ?? null, can_change: !!result?.can_change });
+  };
+
+  const changeWorkspace = (workspaceId, workspaceTitle) => {
+    if (workspaceId === null) {
+      applyWorkspace(null);
+      return;
+    }
+    confirm({
+      title: "Change workspace",
+      body: `Members of ${workspaceTitle} will get access to this project.`,
+      okText: "Change",
+      onOk: () => applyWorkspace(workspaceId),
+    });
+  };
 
   const updateProject = useCallback(() => {
     if (project.id) fetchProject(project.id, true);
@@ -33,6 +86,18 @@ export const GeneralSettings = () => {
               <Input name="title" label="Project Name" />
 
               <TextArea name="description" label="Description" style={{ minHeight: 128 }} />
+              <div className="flex flex-col gap-2">
+                <label className="text-lg font-medium">Workspace</label>
+                <WorkspaceSelect
+                  value={workspaceState.workspace?.id ?? null}
+                  extraOption={workspaceState.workspace}
+                  disabled={!workspaceState.can_change}
+                  onChange={changeWorkspace}
+                />
+                <span className="text-neutral-content-subtler">
+                  Members of the workspace get their workspace role on this project.
+                </span>
+              </div>
               <RadioGroup name="color" label="Color" size="large" labelProps={{ size: "large" }}>
                 {colors.map((color) => (
                   <RadioGroup.Button key={color} value={color}>
