@@ -32,7 +32,7 @@ GET    /api/workspaces/<pk>/roles/            -> [{user, email, first_name, last
 POST   /api/workspaces/<pk>/roles/            {email | user, role} -> 201 (créé) ou 200 (remplacé)
 DELETE /api/workspaces/<pk>/roles/<user_pk>/  -> 204 ; 400 pour le propriétaire
 GET    /api/projects/<pk>/workspace/          -> {workspace: {id, title, color} | null, can_change}
-PUT    /api/projects/<pk>/workspace/          {workspace: id | null} -> idem
+PATCH  /api/projects/<pk>/workspace/          {workspace: id | null} -> idem
 GET    /api/projects/?workspace=<id>|none     filtre de la liste des projets
 GET    /api/projects/<pk>/roles/              chaque ligne gagne `workspace_role` ; `role` vaut null pour
                                               un membre seulement hérité

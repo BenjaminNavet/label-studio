@@ -18,6 +18,7 @@ export const GeneralSettings = () => {
   const api = useAPI();
   const toast = useToast();
   const [workspaceState, setWorkspaceState] = useState({ workspace: null, can_change: false });
+  const [workspaceSelectVersion, setWorkspaceSelectVersion] = useState(0);
 
   const projectId = project?.id;
 
@@ -53,6 +54,9 @@ export const GeneralSettings = () => {
   };
 
   const changeWorkspace = (workspaceId, workspaceTitle) => {
+    // The select keeps the clicked option by itself. Remounting it shows the saved workspace again until
+    // the server accepts the change, which also covers a cancelled confirmation and a refusal.
+    setWorkspaceSelectVersion((version) => version + 1);
     if (workspaceId === null) {
       applyWorkspace(null);
       return;
@@ -89,6 +93,7 @@ export const GeneralSettings = () => {
               <div className="flex flex-col gap-2">
                 <label className="text-lg font-medium">Workspace</label>
                 <WorkspaceSelect
+                  key={workspaceSelectVersion}
                   value={workspaceState.workspace?.id ?? null}
                   extraOption={workspaceState.workspace}
                   disabled={!workspaceState.can_change}

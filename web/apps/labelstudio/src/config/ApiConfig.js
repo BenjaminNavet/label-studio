@@ -36,7 +36,8 @@ export const API_CONFIG = {
     assignWorkspaceRole: "POST:/workspaces/:pk/roles/",
     revokeWorkspaceRole: "DELETE:/workspaces/:pk/roles/:userPk/",
     projectWorkspace: "/projects/:pk/workspace/",
-    setProjectWorkspace: "PUT:/projects/:pk/workspace/",
+    // PATCH, not PUT: the API layer only sends a JSON body with POST, PATCH and DELETE
+    setProjectWorkspace: "PATCH:/projects/:pk/workspace/",
 
     // Project
     projects: "/projects",

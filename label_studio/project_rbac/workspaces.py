@@ -155,7 +155,7 @@ class ProjectWorkspaceAPI(WorkspaceBaseAPI):
         return Response(self.describe(self.get_project()))
 
     @extend_schema(tags=['Workspaces'], summary='Move a project into a workspace, or out of any')
-    def put(self, request, pk):
+    def patch(self, request, pk):
         """Body ``{"workspace": <id>}`` places the project, ``{"workspace": null}`` takes it out."""
         project = self.get_project()
         if 'workspace' not in request.data:

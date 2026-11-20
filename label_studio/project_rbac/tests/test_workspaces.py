@@ -45,7 +45,7 @@ def create_project(owner, title):
 def place(user, project, workspace):
     """Move ``project`` into ``workspace`` (or out of any when None) as ``user``."""
     body = {'workspace': workspace.id if workspace is not None else None}
-    return client_for(user).put(f'/api/projects/{project.id}/workspace/', body, format='json')
+    return client_for(user).patch(f'/api/projects/{project.id}/workspace/', body, format='json')
 
 
 @pytest.fixture
@@ -217,12 +217,12 @@ class TestProjectPlacement:
             organization=team['organization'], title='Private', created_by=team['people']['carol']
         )
         assert place(erin, team['erin_project'], hidden_workspace).status_code == 400
-        response = client_for(erin).put(
+        response = client_for(erin).patch(
             f'/api/projects/{team["erin_project"].id}/workspace/', {'workspace': 'x'}, format='json'
         )
         assert response.status_code == 400
         assert (
-            client_for(erin).put(f'/api/projects/{team["erin_project"].id}/workspace/', {}, format='json').status_code
+            client_for(erin).patch(f'/api/projects/{team["erin_project"].id}/workspace/', {}, format='json').status_code
             == 400
         )
 
