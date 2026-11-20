@@ -39,7 +39,7 @@ def check(label, condition, detail=''):
 def shoot(page, name):
     """Save a capture of ``page`` when a ``SCREENSHOTS`` directory is given."""
     if SCREENSHOTS:
-        shoot(page, '{name}')
+        page.screenshot(path=f'{SCREENSHOTS}/{name}.png')
 
 
 def step(label, action):
