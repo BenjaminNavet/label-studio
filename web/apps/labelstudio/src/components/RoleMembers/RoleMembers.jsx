@@ -241,7 +241,7 @@ export const RoleMembers = ({
                         testId={`${testIdPrefix}-role-select-${member.user}`}
                       />
                       {showWorkspaceHint && (
-                        <Typography variant="body" size="smaller" className="text-neutral-content-subtler">
+                        <Typography variant="body" size="small" className="text-neutral-content-subtler">
                           workspace: {getRoleLabel(member.workspace_role)}
                         </Typography>
                       )}
